@@ -6,11 +6,11 @@ EFI and BIOS systems, multiple filesystems, optional swap, and LUKS encryption.
 """
 
 import os
-from artixinstall.utils.shell import run, MOUNT_POINT
+from artixinstall.utils.shell import run, run_live, command_exists, MOUNT_POINT
 from artixinstall.utils.log import log_info, log_error
 from artixinstall.tui.screen import Screen
 from artixinstall.tui.menu import run_menu, run_selection_menu, MenuItem
-from artixinstall.tui.prompts import confirm_destructive, yes_no, text_input, password_input_confirmed
+from artixinstall.tui.prompts import confirm_destructive, yes_no, password_input_confirmed
 
 
 def is_efi() -> bool:
@@ -223,8 +223,6 @@ def _manual_partition(screen: Screen, disk_path: str, efi: bool) -> dict | None:
     Launch cfdisk for manual partitioning, then ask the user which
     partitions to use for boot, root, and swap.
     """
-    from artixinstall.utils.shell import run_live
-
     screen.show_message(
         "Manual Partitioning",
         f"cfdisk will now launch for {disk_path}.\n"
@@ -242,6 +240,13 @@ def _manual_partition(screen: Screen, disk_path: str, efi: bool) -> dict | None:
         _curses.endwin()
     except Exception:
         curses_was_active = False
+
+    if not command_exists("cfdisk"):
+        screen.show_error(
+            "cfdisk is not available in this live environment.\n"
+            "Install util-linux or use automatic partitioning."
+        )
+        return None
 
     run_live(f"cfdisk {disk_path}")
 
@@ -342,6 +347,20 @@ def _manual_partition(screen: Screen, disk_path: str, efi: bool) -> dict | None:
 # ── Execution functions (called during installation) ──
 
 
+def _device_exists(path: str) -> bool:
+    """Return True when a valid block-device path exists."""
+    return isinstance(path, str) and path.startswith("/dev/") and os.path.exists(path)
+
+
+def _wait_for_device(path: str, attempts: int = 10) -> bool:
+    """Wait briefly for a kernel-created block device to appear."""
+    for _ in range(attempts):
+        if _device_exists(path):
+            return True
+        run(["sleep", "1"])
+    return _device_exists(path)
+
+
 def partition_disk(config: dict) -> tuple[bool, str]:
     """
     Partition the disk according to the config.
@@ -357,9 +376,14 @@ def partition_disk(config: dict) -> tuple[bool, str]:
     use_swap = config["swap"]
     swap_size_mb = config.get("swap_size_mb", 4096)
 
+    if not _device_exists(disk):
+        return False, f"Target disk does not exist: {disk}"
+    if not command_exists("parted"):
+        return False, "Automatic partitioning requires `parted`, but it is not installed on this Artix live ISO."
+
     # Wipe and create partition label
     label = "gpt" if efi else "msdos"
-    rc, _, err = run(f"parted -s {disk} mklabel {label}")
+    rc, _, err = run(["parted", "-s", disk, "mklabel", label])
     if rc != 0:
         return False, f"Failed to create partition label: {err}"
 
@@ -367,37 +391,45 @@ def partition_disk(config: dict) -> tuple[bool, str]:
 
     if efi:
         # EFI boot partition: fat32 with ESP flag
-        rc, _, err = run(f"parted -s {disk} mkpart primary fat32 1MiB {boot_end}MiB")
+        rc, _, err = run(["parted", "-s", disk, "mkpart", "primary", "fat32", "1MiB", f"{boot_end}MiB"])
         if rc != 0:
             return False, f"Failed to create boot partition: {err}"
-        rc, _, err = run(f"parted -s {disk} set 1 esp on")
+        rc, _, err = run(["parted", "-s", disk, "set", "1", "esp", "on"])
         if rc != 0:
             return False, f"Failed to set ESP flag: {err}"
     else:
         # BIOS boot partition: ext2 with boot flag
-        rc, _, err = run(f"parted -s {disk} mkpart primary ext2 1MiB {boot_end}MiB")
+        rc, _, err = run(["parted", "-s", disk, "mkpart", "primary", "ext2", "1MiB", f"{boot_end}MiB"])
         if rc != 0:
             return False, f"Failed to create boot partition: {err}"
-        rc, _, err = run(f"parted -s {disk} set 1 boot on")
+        rc, _, err = run(["parted", "-s", disk, "set", "1", "boot", "on"])
         if rc != 0:
             return False, f"Failed to set boot flag: {err}"
 
     if use_swap:
         swap_end = boot_end + swap_size_mb
-        rc, _, err = run(f"parted -s {disk} mkpart primary linux-swap {boot_end}MiB {swap_end}MiB")
+        rc, _, err = run(["parted", "-s", disk, "mkpart", "primary", "linux-swap", f"{boot_end}MiB", f"{swap_end}MiB"])
         if rc != 0:
             return False, f"Failed to create swap partition: {err}"
-        rc, _, err = run(f"parted -s {disk} mkpart primary {swap_end}MiB 100%")
+        rc, _, err = run(["parted", "-s", disk, "mkpart", "primary", f"{swap_end}MiB", "100%"])
         if rc != 0:
             return False, f"Failed to create root partition: {err}"
     else:
-        rc, _, err = run(f"parted -s {disk} mkpart primary {boot_end}MiB 100%")
+        rc, _, err = run(["parted", "-s", disk, "mkpart", "primary", f"{boot_end}MiB", "100%"])
         if rc != 0:
             return False, f"Failed to create root partition: {err}"
 
     # Wait for kernel to pick up new partitions
-    run("partprobe")
-    run("sleep 2")
+    if command_exists("partprobe"):
+        run(["partprobe", disk])
+    elif command_exists("udevadm"):
+        run(["udevadm", "settle"])
+    run(["sleep", "2"])
+
+    for key in ("boot_part", "root_part", "swap_part"):
+        part = config.get(key)
+        if part and not _wait_for_device(part):
+            return False, f"Partition device did not appear after partitioning: {part}"
 
     log_info(f"Partitioned {disk} successfully")
     return True, ""
@@ -413,26 +445,41 @@ def format_partitions(config: dict) -> tuple[bool, str]:
     encrypt = config.get("encrypt", False)
     encrypt_password = config.get("encrypt_password", "")
 
+    if not _device_exists(boot_part):
+        return False, f"Boot partition does not exist: {boot_part}"
+    if not _device_exists(root_part):
+        return False, f"Root partition does not exist: {root_part}"
+    if swap_part and not _device_exists(swap_part):
+        return False, f"Swap partition does not exist: {swap_part}"
+
     # Format boot partition
     if efi:
-        rc, _, err = run(f"mkfs.fat -F 32 {boot_part}")
+        if not command_exists("mkfs.fat"):
+            return False, "EFI installs require `mkfs.fat`, but it is not installed on this Artix live ISO."
+        rc, _, err = run(["mkfs.fat", "-F", "32", boot_part])
     else:
-        rc, _, err = run(f"mkfs.ext2 -F {boot_part}")
+        if not command_exists("mkfs.ext2"):
+            return False, "BIOS installs require `mkfs.ext2`, but it is not installed on this Artix live ISO."
+        rc, _, err = run(["mkfs.ext2", "-F", boot_part])
     if rc != 0:
         return False, f"Failed to format boot partition: {err}"
 
     # Handle root partition (possibly encrypting first)
     actual_root = root_part
     if encrypt and encrypt_password:
+        if not command_exists("cryptsetup"):
+            return False, "Encryption requires `cryptsetup`, but it is not installed on this Artix live ISO."
         # Set up LUKS
         rc, _, err = run(
-            f"echo -n '{encrypt_password}' | cryptsetup luksFormat --type luks2 --batch-mode {root_part} -"
+            ["cryptsetup", "luksFormat", "--type", "luks2", "--batch-mode", root_part, "--key-file", "-"],
+            input_text=encrypt_password,
         )
         if rc != 0:
             return False, f"Failed to create LUKS volume: {err}"
 
         rc, _, err = run(
-            f"echo -n '{encrypt_password}' | cryptsetup open {root_part} cryptroot -"
+            ["cryptsetup", "open", root_part, "cryptroot", "--key-file", "-"],
+            input_text=encrypt_password,
         )
         if rc != 0:
             return False, f"Failed to open LUKS volume: {err}"
@@ -444,18 +491,23 @@ def format_partitions(config: dict) -> tuple[bool, str]:
 
     # Format root partition
     fs_cmd = {
-        "ext4": f"mkfs.ext4 -F {actual_root}",
-        "btrfs": f"mkfs.btrfs -f {actual_root}",
-        "xfs": f"mkfs.xfs -f {actual_root}",
-        "f2fs": f"mkfs.f2fs -f {actual_root}",
+        "ext4": ["mkfs.ext4", "-F", actual_root],
+        "btrfs": ["mkfs.btrfs", "-f", actual_root],
+        "xfs": ["mkfs.xfs", "-f", actual_root],
+        "f2fs": ["mkfs.f2fs", "-f", actual_root],
     }
-    rc, _, err = run(fs_cmd.get(filesystem, f"mkfs.ext4 -F {actual_root}"))
+    selected_cmd = fs_cmd.get(filesystem, ["mkfs.ext4", "-F", actual_root])
+    if not command_exists(selected_cmd[0]):
+        return False, f"Required filesystem tool is missing from the live ISO: {selected_cmd[0]}"
+    rc, _, err = run(selected_cmd)
     if rc != 0:
         return False, f"Failed to format root partition: {err}"
 
     # Format swap if applicable
     if swap_part:
-        rc, _, err = run(f"mkswap {swap_part}")
+        if not command_exists("mkswap"):
+            return False, "Swap setup requires `mkswap`, but it is not installed on this Artix live ISO."
+        rc, _, err = run(["mkswap", swap_part])
         if rc != 0:
             return False, f"Failed to format swap: {err}"
 
@@ -476,23 +528,33 @@ def mount_partitions(config: dict) -> tuple[bool, str]:
     boot_part = config["boot_part"]
     swap_part = config.get("swap_part", "")
 
+    if not _device_exists(root_dev):
+        return False, f"Root device is not available: {root_dev}"
+    if not _device_exists(boot_part):
+        return False, f"Boot partition is not available: {boot_part}"
+    if swap_part and not _device_exists(swap_part):
+        return False, f"Swap partition is not available: {swap_part}"
+
+    os.makedirs(MOUNT_POINT, exist_ok=True)
+
     # Mount root
-    rc, _, err = run(f"mount {root_dev} {MOUNT_POINT}")
+    rc, _, err = run(["mount", root_dev, MOUNT_POINT])
     if rc != 0:
         return False, f"Failed to mount root: {err}"
 
     # Create and mount boot
-    rc, _, err = run(f"mkdir -p {MOUNT_POINT}/boot")
-    if rc != 0:
-        return False, f"Failed to create /boot: {err}"
+    try:
+        os.makedirs(f"{MOUNT_POINT}/boot", exist_ok=True)
+    except OSError as e:
+        return False, f"Failed to create /boot: {e}"
 
-    rc, _, err = run(f"mount {boot_part} {MOUNT_POINT}/boot")
+    rc, _, err = run(["mount", boot_part, f"{MOUNT_POINT}/boot"])
     if rc != 0:
         return False, f"Failed to mount boot: {err}"
 
     # Enable swap
     if swap_part:
-        rc, _, err = run(f"swapon {swap_part}")
+        rc, _, err = run(["swapon", swap_part])
         if rc != 0:
             return False, f"Failed to enable swap: {err}"
 
