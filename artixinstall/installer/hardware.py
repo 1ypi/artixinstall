@@ -63,7 +63,7 @@ GPU_DRIVERS = {
     "vmware": {
         "label": "VMware / VirtualBox (virtual machine)",
         "packages": [
-            "mesa", "xf86-video-vmware",
+            "mesa",
             "virtualbox-guest-utils",
         ],
     },
@@ -119,6 +119,15 @@ def get_microcode_package() -> str | None:
         return "intel-ucode"
     elif vendor == "amd":
         return "amd-ucode"
+    return None
+
+
+def _first_available_package(candidates: list[str]) -> str | None:
+    """Return the first package available in the currently configured repos."""
+    for pkg in candidates:
+        rc, _, _ = run(["pacman", "-Si", pkg])
+        if rc == 0:
+            return pkg
     return None
 
 
@@ -234,6 +243,14 @@ class HardwareConfig:
         # GPU
         if self.gpu_driver == "auto":
             packages.extend(_auto_gpu_packages())
+        elif self.gpu_driver == "vmware":
+            packages.extend(GPU_DRIVERS["vmware"]["packages"])
+            vmware_driver = _first_available_package([
+                "xf86-video-vmware",
+                "xlibre-xf86-video-vmware",
+            ])
+            if vmware_driver:
+                packages.append(vmware_driver)
         else:
             info = GPU_DRIVERS.get(self.gpu_driver, {})
             packages.extend(info.get("packages", []))
@@ -296,6 +313,12 @@ def _auto_gpu_packages() -> list[str]:
 
     if "vmware" in detected:
         packages.extend(GPU_DRIVERS["vmware"]["packages"])
+        vmware_driver = _first_available_package([
+            "xf86-video-vmware",
+            "xlibre-xf86-video-vmware",
+        ])
+        if vmware_driver:
+            packages.append(vmware_driver)
     else:
         if "nvidia" in detected:
             # Default to proprietary for auto
