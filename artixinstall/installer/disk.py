@@ -361,6 +361,110 @@ def _wait_for_device(path: str, attempts: int = 10) -> bool:
     return _device_exists(path)
 
 
+def _get_disk_usage_details(disk: str) -> list[str]:
+    """Return a list of reasons why a disk appears to be in use."""
+    details: list[str] = []
+
+    rc, stdout, _ = run(["lsblk", "-nrpo", "NAME,MOUNTPOINT", disk])
+    if rc == 0:
+        for line in stdout.splitlines():
+            line = line.strip()
+            if not line:
+                continue
+            parts = line.split(None, 1)
+            if len(parts) == 2 and parts[1].strip():
+                details.append(f"{parts[0]} mounted on {parts[1].strip()}")
+
+    rc, stdout, _ = run(["swapon", "--show=NAME", "--noheadings"])
+    if rc == 0:
+        for swap_dev in stdout.splitlines():
+            swap_dev = swap_dev.strip()
+            if swap_dev and swap_dev.startswith(disk):
+                details.append(f"{swap_dev} is active swap")
+
+    return details
+
+
+def _format_disk_in_use_error(disk: str, details: list[str], stderr: str = "") -> str:
+    """Build a helpful error message for disks that are busy."""
+    lines = [f"The selected disk is in use and cannot be repartitioned right now: {disk}"]
+    if details:
+        lines.append("")
+        lines.append("Detected usage:")
+        lines.extend(f"  - {item}" for item in details)
+    lines.append("")
+    lines.append("This often means you selected the live USB or a disk with mounted partitions.")
+    lines.append("Choose a different target disk, or unmount/deactivate anything using this disk and retry.")
+    if stderr.strip():
+        lines.append("")
+        lines.append(f"parted said: {stderr.strip()}")
+    return "\n".join(lines)
+
+
+def _list_mounts_under(path: str) -> list[str]:
+    """Return mountpoints rooted under the given path, deepest first."""
+    rc, stdout, _ = run(["findmnt", "-R", "-n", "-o", "TARGET", path])
+    if rc != 0:
+        return []
+
+    mounts = []
+    for line in stdout.splitlines():
+        target = line.strip()
+        if target and (target == path or target.startswith(f"{path}/")):
+            mounts.append(target)
+
+    return sorted(set(mounts), key=len, reverse=True)
+
+
+def cleanup_install_environment(config: dict | None = None) -> tuple[bool, str]:
+    """
+    Clean up stale state from previous failed installation attempts.
+
+    This is intentionally conservative: it only tears down `/mnt`, swap, and
+    the well-known `cryptroot` mapping used by this installer.
+    """
+    errors: list[str] = []
+
+    run(["swapoff", "-a"])
+
+    mounts = _list_mounts_under(MOUNT_POINT)
+    if mounts:
+        run(["umount", "-R", MOUNT_POINT])
+        mounts = _list_mounts_under(MOUNT_POINT)
+        for mount in mounts:
+            rc, _, err = run(["umount", mount])
+            if rc != 0:
+                errors.append(f"Failed to unmount {mount}: {err.strip()}")
+
+    if os.path.exists("/dev/mapper/cryptroot"):
+        rc, _, err = run(["cryptsetup", "close", "cryptroot"])
+        if rc != 0:
+            errors.append(f"Failed to close cryptroot: {err.strip()}")
+
+    remaining_mounts = _list_mounts_under(MOUNT_POINT)
+    if remaining_mounts:
+        errors.append(
+            "Some target mounts are still active: " + ", ".join(remaining_mounts)
+        )
+
+    if config and config.get("swap_part"):
+        rc, stdout, _ = run(["swapon", "--show=NAME", "--noheadings"])
+        if rc == 0:
+            active_swap = {line.strip() for line in stdout.splitlines() if line.strip()}
+            if config["swap_part"] in active_swap:
+                errors.append(f"Swap is still active on {config['swap_part']}")
+
+    if errors:
+        return (
+            False,
+            "Failed to clean up a previous installation attempt cleanly:\n"
+            + "\n".join(f"  - {item}" for item in errors),
+        )
+
+    log_info("Cleaned up stale mounts, swap, and cryptroot state")
+    return True, ""
+
+
 def partition_disk(config: dict) -> tuple[bool, str]:
     """
     Partition the disk according to the config.
@@ -380,11 +484,16 @@ def partition_disk(config: dict) -> tuple[bool, str]:
         return False, f"Target disk does not exist: {disk}"
     if not command_exists("parted"):
         return False, "Automatic partitioning requires `parted`, but it is not installed on this Artix live ISO."
+    usage_details = _get_disk_usage_details(disk)
+    if usage_details:
+        return False, _format_disk_in_use_error(disk, usage_details)
 
     # Wipe and create partition label
     label = "gpt" if efi else "msdos"
     rc, _, err = run(["parted", "-s", disk, "mklabel", label])
     if rc != 0:
+        if "being used" in err.lower() or "in use" in err.lower() or "busy" in err.lower():
+            return False, _format_disk_in_use_error(disk, _get_disk_usage_details(disk), err)
         return False, f"Failed to create partition label: {err}"
 
     boot_end = 513  # MB

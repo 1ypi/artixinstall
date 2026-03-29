@@ -24,6 +24,7 @@ from artixinstall.utils.log import init_log, log_info, log_error
 from artixinstall.installer.disk import (
     configure_disk, partition_disk, format_partitions,
     mount_partitions, unmount_all, is_efi, setup_luks_hooks,
+    cleanup_install_environment,
 )
 from artixinstall.installer.init import (
     configure_init, get_base_packages, enable_services,
@@ -510,6 +511,11 @@ def _run_installation(screen: Screen, config: InstallerConfig) -> bool:
     steps.append({
         "label": "Checking live environment",
         "func": lambda: check_live_environment(config.disk),
+    })
+
+    steps.append({
+        "label": "Cleaning previous install state",
+        "func": lambda: cleanup_install_environment(config.disk),
     })
 
     # Partitioning (auto only)
