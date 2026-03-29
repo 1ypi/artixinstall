@@ -6,8 +6,8 @@ inside a chroot, captures all output, logs everything, and never raises
 exceptions — always returning a result tuple so callers can handle errors.
 """
 
-import os
 import shlex
+import shutil
 import subprocess
 from typing import Union
 
@@ -103,4 +103,4 @@ def run_live(cmd: str) -> int:
 
 def command_exists(command: str) -> bool:
     """Return True if a command is available in PATH."""
-    return os.which(command) is not None
+    return shutil.which(command) is not None
