@@ -64,7 +64,7 @@ GPU_DRIVERS = {
         "label": "VMware / VirtualBox (virtual machine)",
         "packages": [
             "mesa", "xf86-video-vmware",
-            "virtualbox-guest-utils", "open-vm-tools",
+            "virtualbox-guest-utils",
         ],
     },
     "none": {

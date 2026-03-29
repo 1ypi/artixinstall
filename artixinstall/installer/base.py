@@ -60,6 +60,10 @@ def install_base_system(init_system: str,
             unique_packages.append(pkg)
             seen.add(pkg)
 
+    success, err = _validate_package_list(unique_packages)
+    if not success:
+        return False, err
+
     pkg_str = " ".join(unique_packages)
     log_info(f"Installing base system: basestrap {MOUNT_POINT} {pkg_str}")
 
@@ -72,6 +76,25 @@ def install_base_system(init_system: str,
         return False, f"basestrap failed: {stderr}"
 
     log_info("Base system installed successfully")
+    return True, ""
+
+
+def _validate_package_list(packages: list[str]) -> tuple[bool, str]:
+    """
+    Check that requested packages exist in the configured pacman repositories.
+    """
+    missing = []
+
+    for pkg in packages:
+        rc, _, stderr = run(["pacman", "-Si", pkg], timeout=30)
+        if rc != 0:
+            missing.append(pkg)
+            if stderr.strip():
+                log_error(f"Package lookup failed for {pkg}: {stderr.strip()}")
+
+    if missing:
+        return False, "These packages were not found in the current repositories: " + ", ".join(missing)
+
     return True, ""
 
 
