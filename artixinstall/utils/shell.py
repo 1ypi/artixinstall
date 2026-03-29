@@ -6,6 +6,7 @@ inside a chroot, captures all output, logs everything, and never raises
 exceptions — always returning a result tuple so callers can handle errors.
 """
 
+import os
 import shlex
 import subprocess
 from typing import Union
@@ -43,24 +44,27 @@ def run(
         (return_code, stdout, stderr). Never raises — errors are returned
         as non-zero return codes with stderr populated.
     """
-    # Normalize command to a string for logging and chroot wrapping
+    use_shell = isinstance(cmd, str) or chroot
     if isinstance(cmd, list):
-        cmd_str = " ".join(shlex.quote(str(c)) for c in cmd)
+        cmd_value = [str(c) for c in cmd]
+        log_cmd(" ".join(shlex.quote(c) for c in cmd_value))
     else:
-        cmd_str = cmd
+        cmd_value = cmd
+        log_cmd(cmd)
 
-    # Wrap for chroot execution if requested
     if chroot:
-        # Escape inner single quotes for the bash -c wrapper
-        escaped = cmd_str.replace("'", "'\\''")
-        cmd_str = f"artix-chroot {MOUNT_POINT} /bin/bash -c '{escaped}'"
-
-    log_cmd(cmd_str)
+        if isinstance(cmd, list):
+            inner_cmd = " ".join(shlex.quote(str(c)) for c in cmd)
+        else:
+            inner_cmd = cmd
+        cmd_value = ["artix-chroot", MOUNT_POINT, "/bin/bash", "-c", inner_cmd]
+        use_shell = False
+        log_cmd(" ".join(shlex.quote(c) for c in cmd_value))
 
     try:
         result = subprocess.run(
-            cmd_str,
-            shell=True,
+            cmd_value,
+            shell=use_shell,
             capture_output=True,
             text=True,
             input=input_text,
@@ -70,6 +74,7 @@ def run(
         return (result.returncode, result.stdout, result.stderr)
 
     except subprocess.TimeoutExpired:
+        cmd_str = cmd if isinstance(cmd, str) else " ".join(shlex.quote(str(c)) for c in cmd)
         msg = f"Command timed out after {timeout}s: {cmd_str}"
         log_error(msg)
         return (124, "", msg)
@@ -94,3 +99,8 @@ def run_live(cmd: str) -> int:
     except Exception as e:
         log_error(f"Live command failed: {e}")
         return 1
+
+
+def command_exists(command: str) -> bool:
+    """Return True if a command is available in PATH."""
+    return os.which(command) is not None

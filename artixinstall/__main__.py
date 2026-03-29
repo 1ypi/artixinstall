@@ -33,6 +33,7 @@ from artixinstall.installer.base import (
     install_base_system, install_extra_packages,
     generate_fstab, copy_mirrorlist, copy_pacman_conf,
 )
+from artixinstall.installer.prereqs import install_live_prerequisites, check_live_environment
 from artixinstall.installer.locale import (
     configure_locale, configure_timezone, configure_keymap,
     apply_locale, apply_timezone, apply_keymap,
@@ -500,6 +501,16 @@ def _run_installation(screen: Screen, config: InstallerConfig) -> bool:
     # Build installation steps
     # ══════════════════════════════════════
     steps = []
+
+    steps.append({
+        "label": "Installing live environment packages",
+        "func": lambda: install_live_prerequisites(config.disk),
+    })
+
+    steps.append({
+        "label": "Checking live environment",
+        "func": lambda: check_live_environment(config.disk),
+    })
 
     # Partitioning (auto only)
     if config.disk and config.disk.get("layout") == "auto":

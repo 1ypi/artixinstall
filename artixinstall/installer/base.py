@@ -8,7 +8,7 @@ generating/verifying the fstab file.
 import os
 import shutil
 
-from artixinstall.utils.shell import run, MOUNT_POINT
+from artixinstall.utils.shell import run, command_exists, MOUNT_POINT
 from artixinstall.utils.log import log_info, log_error
 from artixinstall.installer.init import get_base_packages, get_all_service_packages
 
@@ -64,7 +64,7 @@ def install_base_system(init_system: str,
     log_info(f"Installing base system: basestrap {MOUNT_POINT} {pkg_str}")
 
     rc, stdout, stderr = run(
-        f"basestrap {MOUNT_POINT} {pkg_str}",
+        ["basestrap", MOUNT_POINT, *unique_packages],
         timeout=3600,  # 60 minute timeout for large package sets
     )
 
@@ -97,7 +97,7 @@ def install_extra_packages(packages: list[str]) -> tuple[bool, str]:
     log_info(f"Installing extra packages: {pkg_str}")
 
     rc, _, stderr = run(
-        f"pacman -S --noconfirm {pkg_str}",
+        ["pacman", "-S", "--noconfirm", *unique],
         chroot=True,
         timeout=1800,
     )
@@ -124,7 +124,9 @@ def generate_fstab() -> tuple[bool, str]:
 
     # Try fstabgen (Artix) first, then genfstab (Arch compat)
     for cmd in ["fstabgen", "genfstab"]:
-        rc, stdout, stderr = run(f"{cmd} -U {MOUNT_POINT}")
+        if not command_exists(cmd):
+            continue
+        rc, stdout, stderr = run([cmd, "-U", MOUNT_POINT])
         if rc == 0 and stdout.strip():
             try:
                 with open(fstab_path, "w") as f:
@@ -168,7 +170,7 @@ def _generate_fstab_manual(fstab_path: str) -> tuple[bool, str]:
             continue
 
         # Get UUID for this device
-        rc2, uuid_out, _ = run(f"blkid -s UUID -o value {source}")
+        rc2, uuid_out, _ = run(["blkid", "-s", "UUID", "-o", "value", source])
         if rc2 == 0 and uuid_out.strip():
             fs_spec = f"UUID={uuid_out.strip()}"
         else:
@@ -210,7 +212,7 @@ def _generate_fstab_manual(fstab_path: str) -> tuple[bool, str]:
         for swap_dev in stdout.strip().splitlines():
             swap_dev = swap_dev.strip()
             if swap_dev:
-                rc2, uuid_out, _ = run(f"blkid -s UUID -o value {swap_dev}")
+                rc2, uuid_out, _ = run(["blkid", "-s", "UUID", "-o", "value", swap_dev])
                 if rc2 == 0 and uuid_out.strip():
                     fs_spec = f"UUID={uuid_out.strip()}"
                 else:
