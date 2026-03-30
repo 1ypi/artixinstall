@@ -474,7 +474,7 @@ def _run_installation(screen: Screen, config: InstallerConfig) -> bool:
     extra_packages.extend(get_bootloader_packages(config.bootloader, efi))
 
     # Audio packages
-    extra_packages.extend(get_audio_packages(config.audio))
+    extra_packages.extend(get_audio_packages(config.audio, config.init_system))
 
     # Network packages
     extra_packages.extend(get_network_packages(config.network))
@@ -629,6 +629,7 @@ def _run_installation(screen: Screen, config: InstallerConfig) -> bool:
                 config.user,
                 desktop=config.desktop,
                 gpu_driver=config.hardware.gpu_driver if config.hardware else "auto",
+                audio=config.audio,
             ),
         })
 

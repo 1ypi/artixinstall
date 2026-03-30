@@ -22,6 +22,14 @@ PACKAGE_ALIASES = {
     "xf86-video-vmware": ["xf86-video-vmware", "xlibre-xf86-video-vmware", "xlibre-video-vmware"],
 }
 
+# Obsolete split packages that conflict with their newer unified replacements.
+# These are passed to basestrap/pacman via --ignore so they don't block
+# installation when a package group (e.g. gnome-extra) pulls the replacement.
+_IGNORED_CONFLICTS = [
+    "gnome-builder-clang",     # merged into gnome-builder >=49
+    "gnome-builder-flatpak",   # merged into gnome-builder >=49
+]
+
 
 def install_base_system(init_system: str,
                         extra_packages: list[str] | None = None,
@@ -79,9 +87,15 @@ def install_base_system(init_system: str,
     pkg_str = " ".join(resolved_packages)
     log_info(f"Installing base system: basestrap {MOUNT_POINT} {pkg_str}")
 
+    # Build --ignore flags for known conflicting obsolete packages
+    ignore_args = []
+    if _IGNORED_CONFLICTS:
+        ignore_args = ["--ignore", ",".join(_IGNORED_CONFLICTS)]
+        log_info(f"Ignoring known conflicting packages: {', '.join(_IGNORED_CONFLICTS)}")
+
     if live_output:
         rc, err = run_live_result(
-            ["basestrap", MOUNT_POINT, *resolved_packages],
+            ["basestrap", MOUNT_POINT, *ignore_args, *resolved_packages],
             timeout=3600,
         )
         if rc != 0:
@@ -90,7 +104,7 @@ def install_base_system(init_system: str,
         return True, ""
 
     rc, stdout, stderr = run(
-        ["basestrap", MOUNT_POINT, *resolved_packages],
+        ["basestrap", MOUNT_POINT, *ignore_args, *resolved_packages],
         timeout=3600,  # 60 minute timeout for large package sets
     )
 
