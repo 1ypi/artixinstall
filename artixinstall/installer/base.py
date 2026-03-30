@@ -13,6 +13,16 @@ from artixinstall.utils.log import log_info, log_error
 from artixinstall.installer.init import get_base_packages, get_all_service_packages
 
 
+PACKAGE_ALIASES = {
+    "plasma": ["plasma-meta", "plasma"],
+    "kde-applications": ["kde-applications-meta", "kde-applications"],
+    "xf86-video-amdgpu": ["xf86-video-amdgpu", "xlibre-xf86-video-amdgpu", "xlibre-video-amdgpu"],
+    "xf86-video-intel": ["xf86-video-intel", "xlibre-xf86-video-intel", "xlibre-video-intel"],
+    "xf86-video-nouveau": ["xf86-video-nouveau", "xlibre-xf86-video-nouveau", "xlibre-video-nouveau"],
+    "xf86-video-vmware": ["xf86-video-vmware", "xlibre-xf86-video-vmware", "xlibre-video-vmware"],
+}
+
+
 def install_base_system(init_system: str,
                         extra_packages: list[str] | None = None,
                         kernel: str = "linux",
@@ -62,16 +72,16 @@ def install_base_system(init_system: str,
             unique_packages.append(pkg)
             seen.add(pkg)
 
-    success, err = _validate_package_list(unique_packages)
+    success, resolved_packages, err = _validate_package_list(unique_packages)
     if not success:
         return False, err
 
-    pkg_str = " ".join(unique_packages)
+    pkg_str = " ".join(resolved_packages)
     log_info(f"Installing base system: basestrap {MOUNT_POINT} {pkg_str}")
 
     if live_output:
         rc, err = run_live_result(
-            ["basestrap", MOUNT_POINT, *unique_packages],
+            ["basestrap", MOUNT_POINT, *resolved_packages],
             timeout=3600,
         )
         if rc != 0:
@@ -80,7 +90,7 @@ def install_base_system(init_system: str,
         return True, ""
 
     rc, stdout, stderr = run(
-        ["basestrap", MOUNT_POINT, *unique_packages],
+        ["basestrap", MOUNT_POINT, *resolved_packages],
         timeout=3600,  # 60 minute timeout for large package sets
     )
 
@@ -91,7 +101,37 @@ def install_base_system(init_system: str,
     return True, ""
 
 
-def _validate_package_list(packages: list[str]) -> tuple[bool, str]:
+def _package_exists(pkg: str) -> bool:
+    """Check whether an install target exists as package or package group."""
+    rc, _, _ = run(["pacman", "-Si", pkg], timeout=30)
+    if rc == 0:
+        return True
+
+    rc_group, group_out, _ = run(["pacman", "-Sg", pkg], timeout=30)
+    return rc_group == 0 and bool(group_out.strip())
+
+
+def _candidate_names(pkg: str) -> list[str]:
+    """Return candidate Artix package names for a requested install target."""
+    candidates = PACKAGE_ALIASES.get(pkg, [pkg])
+
+    if pkg.startswith("xf86-video-"):
+        suffix = pkg.removeprefix("xf86-video-")
+        candidates.extend([
+            f"xlibre-xf86-video-{suffix}",
+            f"xlibre-video-{suffix}",
+        ])
+
+    seen: set[str] = set()
+    ordered: list[str] = []
+    for candidate in candidates:
+        if candidate not in seen:
+            ordered.append(candidate)
+            seen.add(candidate)
+    return ordered
+
+
+def _validate_package_list(packages: list[str]) -> tuple[bool, list[str], str]:
     """
     Check that requested install targets exist in the configured pacman repos.
 
@@ -101,26 +141,28 @@ def _validate_package_list(packages: list[str]) -> tuple[bool, str]:
     `basestrap`.
     """
     missing = []
+    resolved = []
 
     for pkg in packages:
-        rc, _, stderr = run(["pacman", "-Si", pkg], timeout=30)
-        if rc == 0:
+        found = None
+        for candidate in _candidate_names(pkg):
+            if _package_exists(candidate):
+                found = candidate
+                break
+
+        if found is None:
+            missing.append(pkg)
+            log_error(f"Package lookup failed for {pkg}; tried: {', '.join(_candidate_names(pkg))}")
             continue
 
-        rc_group, group_out, group_err = run(["pacman", "-Sg", pkg], timeout=30)
-        if rc_group == 0 and group_out.strip():
-            continue
-
-        missing.append(pkg)
-        if stderr.strip():
-            log_error(f"Package lookup failed for {pkg}: {stderr.strip()}")
-        elif group_err.strip():
-            log_error(f"Group lookup failed for {pkg}: {group_err.strip()}")
+        resolved.append(found)
+        if found != pkg:
+            log_info(f"Resolved package {pkg} -> {found}")
 
     if missing:
-        return False, "These packages or package groups were not found in the current repositories: " + ", ".join(missing)
+        return False, [], "These packages or package groups were not found in the current repositories: " + ", ".join(missing)
 
-    return True, ""
+    return True, resolved, ""
 
 
 def install_extra_packages(packages: list[str]) -> tuple[bool, str]:
