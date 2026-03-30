@@ -6,6 +6,7 @@ Mirrors archinstall's package-related configuration options.
 """
 
 from artixinstall.utils.log import log_info
+from artixinstall.utils.shell import run
 from artixinstall.tui.screen import Screen
 from artixinstall.tui.menu import run_menu, run_selection_menu, MenuItem
 from artixinstall.tui.prompts import text_input, yes_no
@@ -106,7 +107,6 @@ PACKAGE_GROUPS = {
     "Web Browsers": {
         "firefox": "Firefox (open-source, recommended)",
         "chromium": "Chromium (open-source Chrome)",
-        "brave-bin": "Brave (privacy-focused, AUR)",
     },
     "Multimedia": {
         "vlc": "VLC media player",
@@ -387,37 +387,51 @@ def get_profile_label(profile: str) -> str:
     return info.get("label", profile)
 
 
-def apply_repositories(repos: dict) -> tuple[bool, str]:
-    """
-    Enable optional repositories in /mnt/etc/pacman.conf.
-    """
+def _apply_repositories_to_path(pacman_conf: str, repos: dict) -> tuple[bool, str]:
+    """Enable optional repositories in the given pacman.conf path."""
     import os
-    pacman_conf = os.path.join("/mnt", "etc", "pacman.conf")
 
     if not os.path.isfile(pacman_conf):
-        return True, ""  # Will be created by basestrap
+        return True, ""
 
     try:
         with open(pacman_conf, "r") as f:
             content = f.read()
 
         if repos.get("multilib"):
-            # Uncomment [multilib] section
             content = content.replace(
                 "#[multilib]\n#Include = /etc/pacman.d/mirrorlist",
                 "[multilib]\nInclude = /etc/pacman.d/mirrorlist",
             )
 
-        if repos.get("universe"):
-            # Add [universe] if not present
-            if "[universe]" not in content:
-                content += "\n[universe]\nServer = https://universe.artixlinux.org/$arch\n"
+        if repos.get("universe") and "[universe]" not in content:
+            content += "\n[universe]\nServer = https://universe.artixlinux.org/$arch\n"
 
         with open(pacman_conf, "w") as f:
             f.write(content)
 
-        log_info(f"Repositories configured: {repos}")
+        log_info(f"Repositories configured in {pacman_conf}: {repos}")
         return True, ""
 
     except OSError as e:
         return False, f"Failed to configure repositories: {e}"
+
+
+def configure_live_repositories(repos: dict) -> tuple[bool, str]:
+    """Enable optional repositories in the live environment before basestrap."""
+    success, message = _apply_repositories_to_path("/etc/pacman.conf", repos)
+    if not success:
+        return success, message
+
+    rc, _, stderr = run(["pacman", "-Sy"], timeout=600)
+    if rc != 0:
+        return False, f"Failed to refresh package databases after enabling repositories: {stderr}"
+
+    return True, ""
+
+
+def apply_repositories(repos: dict) -> tuple[bool, str]:
+    """
+    Enable optional repositories in /mnt/etc/pacman.conf.
+    """
+    return _apply_repositories_to_path("/mnt/etc/pacman.conf", repos)

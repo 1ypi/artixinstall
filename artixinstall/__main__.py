@@ -64,7 +64,7 @@ from artixinstall.installer.packages import (
     get_kernel_packages, get_kernel_name, get_kernel_label,
     get_audio_packages, get_audio_label,
     get_profile_packages, get_profile_services, get_profile_label,
-    apply_repositories,
+    apply_repositories, configure_live_repositories,
 )
 
 
@@ -515,6 +515,9 @@ def _run_installation(screen: Screen, config: InstallerConfig) -> bool:
     profile_services = get_profile_services(config.profile)
     services_to_enable.extend(profile_services)
 
+    if any(pkg.startswith("lib32-") for pkg in extra_packages):
+        config.repositories["multilib"] = True
+
     # Custom mirror setup
     if config.mirrors not in ("fastest", "default", "live") and config.disk:
         _write_custom_mirrors(config)
@@ -562,6 +565,11 @@ def _run_installation(screen: Screen, config: InstallerConfig) -> bool:
         "func": lambda: setup_mirrorlist(config.mirrors),
     })
 
+    steps.append({
+        "label": "Configuring repositories",
+        "func": lambda: configure_live_repositories(config.repositories),
+    })
+
     # Base system installation (the big one)
     steps.append({
         "label": "Installing base system",
@@ -578,7 +586,7 @@ def _run_installation(screen: Screen, config: InstallerConfig) -> bool:
 
     # Configure repositories in target
     steps.append({
-        "label": "Configuring repositories",
+        "label": "Applying repository settings to target",
         "func": lambda: apply_repositories(config.repositories),
     })
 

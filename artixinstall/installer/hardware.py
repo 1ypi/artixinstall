@@ -48,8 +48,6 @@ GPU_DRIVERS = {
         "packages": [
             "xf86-video-amdgpu", "mesa", "lib32-mesa",
             "vulkan-radeon", "lib32-vulkan-radeon",
-            "libva-mesa-driver", "lib32-libva-mesa-driver",
-            "mesa-vdpau", "lib32-mesa-vdpau",
         ],
     },
     "intel": {
