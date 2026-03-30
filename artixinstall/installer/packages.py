@@ -59,6 +59,11 @@ AUDIO_SERVERS = {
     },
 }
 
+PIPEWIRE_INIT_PACKAGES = {
+    "openrc": ["pipewire-openrc", "pipewire-pulse-openrc", "wireplumber-openrc"],
+    "dinit": ["pipewire-dinit", "pipewire-pulse-dinit", "wireplumber-dinit"],
+}
+
 
 # ── Installation profiles (archinstall-style presets) ──
 
@@ -138,7 +143,7 @@ PACKAGE_GROUPS = {
     "System Tools": {
         "htop": "htop (process viewer)",
         "btop": "btop (resource monitor)",
-        "neofetch": "neofetch (system info)",
+        "fastfetch": "fastfetch (system info)",
         "tmux": "tmux (terminal multiplexer)",
         "tree": "tree (directory listing)",
         "rsync": "rsync (file synchronization)",
@@ -358,10 +363,13 @@ def get_kernel_name(kernel: str) -> str:
     return kernel
 
 
-def get_audio_packages(audio: str) -> list[str]:
+def get_audio_packages(audio: str, init_system: str | None = None) -> list[str]:
     """Get the package list for an audio server choice."""
     info = AUDIO_SERVERS.get(audio, AUDIO_SERVERS["pipewire"])
-    return list(info.get("packages", []))
+    packages = list(info.get("packages", []))
+    if audio == "pipewire" and init_system:
+        packages.extend(PIPEWIRE_INIT_PACKAGES.get(init_system, []))
+    return packages
 
 
 def get_audio_label(audio: str) -> str:
