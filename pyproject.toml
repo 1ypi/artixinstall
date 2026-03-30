@@ -7,7 +7,7 @@ name = "artixinstall"
 version = "1.0.1"
 description = "An interactive TUI installer for Artix Linux with support for OpenRC, runit, s6, and dinit"
 readme = "README.md"
-license = {text = "MIT"}
+license = {text = "GPL-3.0-only"}
 requires-python = ">=3.10"
 authors = [
     {name = "Artix Install Contributors"}
@@ -16,7 +16,7 @@ classifiers = [
     "Development Status :: 4 - Beta",
     "Environment :: Console :: Curses",
     "Intended Audience :: System Administrators",
-    "License :: OSI Approved :: MIT License",
+    "License :: OSI Approved :: GNU General Public License v3 (GPLv3)",
     "Operating System :: POSIX :: Linux",
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3.10",
