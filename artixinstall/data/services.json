@@ -70,5 +70,11 @@
     "runit":   { "package": "gdm",  "enable": "ln -s /etc/runit/sv/gdm /etc/runit/runsvdir/default/" },
     "s6":      { "package": "gdm",  "enable": "s6-rc-bundle-update add default gdm" },
     "dinit":   { "package": "gdm",  "enable": "dinitctl enable gdm" }
+  },
+  "ly": {
+    "openrc":  { "package": "ly-openrc",  "enable": "rc-update add ly default" },
+    "runit":   { "package": "ly-runit",   "enable": "ln -s /etc/runit/sv/ly /etc/runit/runsvdir/default/" },
+    "s6":      { "package": "ly-s6",      "enable": "s6-rc-bundle-update add default ly" },
+    "dinit":   { "package": "ly-dinit",   "enable": "dinitctl enable ly" }
   }
 }

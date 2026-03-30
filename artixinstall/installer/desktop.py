@@ -25,6 +25,39 @@ _COMMON_UTILS = [
     "xdg-utils", "xdg-user-dirs",
 ]
 
+DISPLAY_MANAGERS = {
+    "none": {
+        "label": "TTY only (no greeter)",
+        "packages": [],
+        "services": [],
+    },
+    "gdm": {
+        "label": "GDM",
+        "packages": ["gdm"],
+        "services": ["gdm"],
+    },
+    "sddm": {
+        "label": "SDDM",
+        "packages": ["sddm", "sddm-theme-artix"],
+        "services": ["sddm"],
+    },
+    "lightdm-gtk": {
+        "label": "LightDM + GTK Greeter",
+        "packages": ["lightdm", "lightdm-gtk-greeter", "lightdm-gtk-greeter-settings"],
+        "services": ["lightdm"],
+    },
+    "lightdm-slick": {
+        "label": "LightDM + Slick Greeter",
+        "packages": ["lightdm", "lightdm-slick-greeter"],
+        "services": ["lightdm"],
+    },
+    "ly": {
+        "label": "Ly",
+        "packages": ["ly"],
+        "services": ["ly"],
+    },
+}
+
 # ── Desktop environment definitions ──
 # Each entry includes:
 #   label:            display name in the menu
@@ -53,26 +86,24 @@ DESKTOP_ENVIRONMENTS = {
         "category": "de",
         "packages": [
             "gnome", "gnome-extra",
-            "gdm",
             "xdg-desktop-portal-gnome",
             *_WAYLAND_BASE, *_PIPEWIRE, *_COMMON_UTILS,
         ],
         "display_manager": "gdm",
-        "services": ["gdm"],
+        "services": [],
     },
 
     "kde": {
         "label": "KDE Plasma",
         "category": "de",
         "packages": [
-            "plasma", "kde-applications",
-            "sddm",
+            "plasma-meta", "kde-applications-meta",
             "xdg-desktop-portal-kde",
             "phonon-qt6-vlc",
             *_XORG, *_WAYLAND_BASE, *_PIPEWIRE, *_COMMON_UTILS,
         ],
         "display_manager": "sddm",
-        "services": ["sddm"],
+        "services": [],
     },
 
     "xfce": {
@@ -80,13 +111,12 @@ DESKTOP_ENVIRONMENTS = {
         "category": "de",
         "packages": [
             "xfce4", "xfce4-goodies",
-            "lightdm", "lightdm-gtk-greeter", "lightdm-gtk-greeter-settings",
             "gvfs", "thunar-archive-plugin", "file-roller",
             "pavucontrol", "network-manager-applet",
             *_XORG, *_PIPEWIRE, *_COMMON_UTILS,
         ],
         "display_manager": "lightdm",
-        "services": ["lightdm"],
+        "services": [],
     },
 
     "cinnamon": {
@@ -94,13 +124,12 @@ DESKTOP_ENVIRONMENTS = {
         "category": "de",
         "packages": [
             "cinnamon", "nemo-fileroller", "gnome-terminal",
-            "lightdm", "lightdm-gtk-greeter",
             "gnome-screenshot", "gnome-keyring",
             "blueberry",
             *_XORG, *_PIPEWIRE, *_COMMON_UTILS,
         ],
         "display_manager": "lightdm",
-        "services": ["lightdm"],
+        "services": [],
     },
 
     "mate": {
@@ -108,12 +137,11 @@ DESKTOP_ENVIRONMENTS = {
         "category": "de",
         "packages": [
             "mate", "mate-extra",
-            "lightdm", "lightdm-gtk-greeter",
             "network-manager-applet",
             *_XORG, *_PIPEWIRE, *_COMMON_UTILS,
         ],
         "display_manager": "lightdm",
-        "services": ["lightdm"],
+        "services": [],
     },
 
     "budgie": {
@@ -122,12 +150,11 @@ DESKTOP_ENVIRONMENTS = {
         "packages": [
             "budgie", "budgie-extras",
             "gnome-terminal", "nemo",
-            "lightdm", "lightdm-gtk-greeter",
             "gnome-keyring",
             *_XORG, *_PIPEWIRE, *_COMMON_UTILS,
         ],
         "display_manager": "lightdm",
-        "services": ["lightdm"],
+        "services": [],
     },
 
     "lxqt": {
@@ -135,13 +162,12 @@ DESKTOP_ENVIRONMENTS = {
         "category": "de",
         "packages": [
             "lxqt", "breeze-icons", "oxygen-icons",
-            "sddm",
             "xscreensaver",
             "network-manager-applet",
             *_XORG, *_PIPEWIRE, *_COMMON_UTILS,
         ],
         "display_manager": "sddm",
-        "services": ["sddm"],
+        "services": [],
     },
 
     "deepin": {
@@ -149,11 +175,10 @@ DESKTOP_ENVIRONMENTS = {
         "category": "de",
         "packages": [
             "deepin", "deepin-extra",
-            "lightdm", "lightdm-gtk-greeter",
             *_XORG, *_PIPEWIRE, *_COMMON_UTILS,
         ],
         "display_manager": "lightdm",
-        "services": ["lightdm"],
+        "services": [],
     },
 
     "enlightenment": {
@@ -161,11 +186,10 @@ DESKTOP_ENVIRONMENTS = {
         "category": "de",
         "packages": [
             "enlightenment", "terminology", "econnman",
-            "lightdm", "lightdm-gtk-greeter",
             *_XORG, *_PIPEWIRE, *_COMMON_UTILS,
         ],
         "display_manager": "lightdm",
-        "services": ["lightdm"],
+        "services": [],
     },
 
     # ══════════════════════════════════════
@@ -360,22 +384,71 @@ def configure_desktop(screen: Screen) -> str | None:
     return result.key
 
 
-def get_desktop_packages(desktop: str) -> list[str]:
+def configure_display_manager(screen: Screen, desktop: str) -> str | None:
+    """Choose a display manager / greeter for desktop environments."""
+    info = DESKTOP_ENVIRONMENTS.get(desktop, {})
+    if info.get("category") != "de":
+        return "none"
+
+    default_dm = info.get("display_manager")
+    recommended = {
+        "gdm": ["gdm", "sddm", "ly", "lightdm-gtk", "lightdm-slick", "none"],
+        "sddm": ["sddm", "ly", "lightdm-gtk", "lightdm-slick", "gdm", "none"],
+        "lightdm": ["lightdm-gtk", "lightdm-slick", "ly", "sddm", "gdm", "none"],
+    }.get(default_dm, ["lightdm-gtk", "ly", "sddm", "gdm", "lightdm-slick", "none"])
+
+    options = [
+        DISPLAY_MANAGERS[key]["label"]
+        for key in recommended
+        if key in DISPLAY_MANAGERS
+    ]
+
+    choice = run_selection_menu(
+        screen,
+        f"Select greeter / login manager for {info.get('label', desktop)}",
+        options,
+    )
+    if choice is None:
+        return None
+
+    for key in recommended:
+        if DISPLAY_MANAGERS.get(key, {}).get("label") == choice:
+            return key
+    return "none"
+
+
+def get_desktop_packages(desktop: str, display_manager: str = "none") -> list[str]:
     """Get the package list for a desktop environment."""
     info = DESKTOP_ENVIRONMENTS.get(desktop, {})
-    return list(info.get("packages", []))
+    packages = list(info.get("packages", []))
+    dm_packages = DISPLAY_MANAGERS.get(display_manager, {}).get("packages", [])
+    packages.extend(dm_packages)
+    return packages
 
 
-def get_desktop_services(desktop: str) -> list[str]:
-    """Get the services that need to be enabled for the DE."""
+def get_desktop_services(desktop: str, display_manager: str = "none") -> list[str]:
+    """Get the services that need to be enabled for the desktop install."""
     info = DESKTOP_ENVIRONMENTS.get(desktop, {})
-    return list(info.get("services", []))
+    services = list(info.get("services", []))
+    dm_services = DISPLAY_MANAGERS.get(display_manager, {}).get("services", [])
+    services.extend(dm_services)
+    return services
 
 
-def get_desktop_label(desktop: str) -> str:
+def get_desktop_label(desktop: str, display_manager: str = "none") -> str:
     """Get the display label for a desktop environment."""
     info = DESKTOP_ENVIRONMENTS.get(desktop, {})
-    return info.get("label", desktop)
+    label = info.get("label", desktop)
+    dm_label = DISPLAY_MANAGERS.get(display_manager, {}).get("label")
+    if info.get("category") == "de" and display_manager != "none" and dm_label:
+        return f"{label} + {dm_label}"
+    return label
+
+
+def get_display_manager_label(display_manager: str) -> str:
+    """Get the display label for a configured greeter / login manager."""
+    info = DISPLAY_MANAGERS.get(display_manager, {})
+    return info.get("label", display_manager)
 
 
 def get_desktop_category(desktop: str) -> str:

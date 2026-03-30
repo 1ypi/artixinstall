@@ -51,8 +51,9 @@ from artixinstall.installer.bootloader import (
     configure_bootloader, apply_bootloader, get_bootloader_packages,
 )
 from artixinstall.installer.desktop import (
-    configure_desktop, get_desktop_packages, get_desktop_services,
-    get_desktop_label,
+    configure_desktop, configure_display_manager,
+    get_desktop_packages, get_desktop_services,
+    get_desktop_label, get_display_manager_label, get_desktop_category,
 )
 from artixinstall.installer.hardware import (
     configure_hardware, HardwareConfig, apply_laptop_power,
@@ -97,6 +98,7 @@ class InstallerConfig:
         # ── Profile & desktop ──
         self.profile: str = "desktop"
         self.desktop: str = "none"
+        self.display_manager: str = "none"
         self.audio: str = "pipewire"
 
         # ── Hardware ──
@@ -148,7 +150,9 @@ def _build_main_menu(config: InstallerConfig) -> list[MenuItem]:
     kernel_label = get_kernel_label(config.kernel)
     audio_label = get_audio_label(config.audio)
     profile_label = get_profile_label(config.profile)
-    de_label = get_desktop_label(config.desktop)
+    de_label = get_desktop_label(config.desktop, config.display_manager)
+    dm_enabled = get_desktop_category(config.desktop) == "de"
+    dm_label = get_display_manager_label(config.display_manager) if dm_enabled else "TTY only"
 
     # ── Hardware ──
     hw_val = "not configured"
@@ -196,6 +200,7 @@ def _build_main_menu(config: InstallerConfig) -> list[MenuItem]:
         MenuItem("Init system", "init_system", init_label, True),
         MenuItem("Kernel", "kernel", kernel_label, True),
         MenuItem("Desktop environment", "desktop", de_label, True),
+        MenuItem("Greeter / login manager", "display_manager", dm_label, dm_enabled),
         MenuItem("Audio", "audio", audio_label, True),
         MenuItem("Graphics & hardware", "hardware", hw_val, hw_set),
         MenuItem("Network manager", "network", config.network, True),
@@ -276,6 +281,18 @@ def _handle_menu_choice(screen: Screen, config: InstallerConfig,
         result = configure_desktop(screen)
         if result is not None:
             config.desktop = result
+            if get_desktop_category(config.desktop) == "de":
+                dm_result = configure_display_manager(screen, config.desktop)
+                if dm_result is not None:
+                    config.display_manager = dm_result
+            else:
+                config.display_manager = "none"
+
+    elif key == "display_manager":
+        if get_desktop_category(config.desktop) == "de":
+            result = configure_display_manager(screen, config.desktop)
+            if result is not None:
+                config.display_manager = result
 
     elif key == "audio":
         result = configure_audio(screen)
@@ -373,7 +390,8 @@ def _show_summary(screen: Screen, config: InstallerConfig) -> bool:
     disk_info = config.disk or {}
     user_info = config.user or {}
     init_label = INIT_SYSTEMS.get(config.init_system, {}).get("label", config.init_system)
-    de_label = get_desktop_label(config.desktop)
+    de_label = get_desktop_label(config.desktop, config.display_manager)
+    dm_label = get_display_manager_label(config.display_manager) if get_desktop_category(config.desktop) == "de" else "TTY only"
     kernel_label = get_kernel_label(config.kernel)
     audio_label = get_audio_label(config.audio)
     profile_label = get_profile_label(config.profile)
@@ -392,6 +410,7 @@ def _show_summary(screen: Screen, config: InstallerConfig) -> bool:
         f"Init system:       {init_label}",
         f"Kernel:            {kernel_label}",
         f"Desktop:           {de_label}",
+        f"Login manager:     {dm_label}",
         f"Audio:             {audio_label}",
         f"Hardware:          {hw_summary}",
         "",
@@ -465,10 +484,10 @@ def _run_installation(screen: Screen, config: InstallerConfig) -> bool:
     extra_packages.extend(get_all_service_packages(net_services, config.init_system))
 
     # Desktop packages
-    extra_packages.extend(get_desktop_packages(config.desktop))
+    extra_packages.extend(get_desktop_packages(config.desktop, config.display_manager))
 
     # Desktop service init-specific packages
-    de_services = get_desktop_services(config.desktop)
+    de_services = get_desktop_services(config.desktop, config.display_manager)
     extra_packages.extend(get_all_service_packages(de_services, config.init_system))
 
     # Profile packages
@@ -598,7 +617,11 @@ def _run_installation(screen: Screen, config: InstallerConfig) -> bool:
     if config.user:
         steps.append({
             "label": f"Creating user '{config.user['username']}'",
-            "func": lambda: apply_user(config.user),
+            "func": lambda: apply_user(
+                config.user,
+                desktop=config.desktop,
+                gpu_driver=config.hardware.gpu_driver if config.hardware else "auto",
+            ),
         })
 
     steps.append({

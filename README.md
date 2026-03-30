@@ -83,8 +83,10 @@ No `pip install` needed, just clone and run.
 
 ## Notes
 
+- This project is currently maintained by one person, and I have not tested every possible combination yet.
+- If you try it, please test it and send feedback if something breaks or feels rough. It would be genuinely appreciated.
 - NVIDIA systems are supported, but NVIDIA plus Wayland compositors such as Hyprland can still need manual post-install tuning depending on driver choice and GPU generation.
-- The installer handles Hyprland package installation, but it does not yet write NVIDIA-specific Hyprland environment/configuration automatically.
+- The installer now adds basic NVIDIA-specific Hyprland environment variables automatically when Hyprland and an NVIDIA driver are selected together.
 
 ## Supported Init Systems
 
