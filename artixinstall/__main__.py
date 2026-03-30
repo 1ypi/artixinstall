@@ -646,7 +646,18 @@ def _run_installation(screen: Screen, config: InstallerConfig) -> bool:
 
 def _handle_post_install(screen: Screen, config: InstallerConfig) -> bool:
     """Offer reboot/chroot actions after a successful installation."""
-    from artixinstall.utils.shell import run_live, MOUNT_POINT
+    from artixinstall.utils.shell import run, run_live, MOUNT_POINT
+
+    def eject_install_media() -> None:
+        """Best-effort eject of attached optical install media before reboot."""
+        rc, stdout, _ = run(["lsblk", "-dnro", "NAME,TYPE"])
+        if rc != 0:
+            return
+
+        for line in stdout.splitlines():
+            parts = line.split()
+            if len(parts) == 2 and parts[1] == "rom":
+                run(["eject", f"/dev/{parts[0]}"])
 
     while True:
         choice = run_selection_menu(screen, "Installation complete - next step", [
@@ -664,6 +675,7 @@ def _handle_post_install(screen: Screen, config: InstallerConfig) -> bool:
 
         if choice.startswith("Unmount everything"):
             unmount_all()
+            eject_install_media()
             run_live("reboot")
             return False
 
