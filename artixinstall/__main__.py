@@ -54,6 +54,7 @@ from artixinstall.installer.desktop import (
     configure_desktop, configure_display_manager,
     get_desktop_packages, get_desktop_services,
     get_desktop_label, get_display_manager_label, get_desktop_category,
+    get_display_manager_warning,
 )
 from artixinstall.installer.hardware import (
     configure_hardware, HardwareConfig, apply_laptop_power,
@@ -285,6 +286,13 @@ def _handle_menu_choice(screen: Screen, config: InstallerConfig,
                 dm_result = configure_display_manager(screen, config.desktop)
                 if dm_result is not None:
                     config.display_manager = dm_result
+                    warning = get_display_manager_warning(config.desktop, config.display_manager)
+                    if warning:
+                        screen.show_error(
+                            "Warning: Non-ideal greeter combination\n\n"
+                            + warning
+                            + "\n\nYou can still continue, but the recommended greeter is usually safer."
+                        )
             else:
                 config.display_manager = "none"
 
@@ -293,6 +301,13 @@ def _handle_menu_choice(screen: Screen, config: InstallerConfig,
             result = configure_display_manager(screen, config.desktop)
             if result is not None:
                 config.display_manager = result
+                warning = get_display_manager_warning(config.desktop, config.display_manager)
+                if warning:
+                    screen.show_error(
+                        "Warning: Non-ideal greeter combination\n\n"
+                        + warning
+                        + "\n\nYou can still continue, but the recommended greeter is usually safer."
+                    )
 
     elif key == "audio":
         result = configure_audio(screen)

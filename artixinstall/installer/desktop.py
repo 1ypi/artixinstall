@@ -58,6 +58,92 @@ DISPLAY_MANAGERS = {
     },
 }
 
+DISPLAY_MANAGER_RECOMMENDATIONS = {
+    "gnome": {
+        "recommended": "gdm",
+        "warnings": {
+            "ly": "GNOME works best with GDM. Ly is not recommended for GNOME and may fail with Xorg sessions unless extra X11 pieces are present.",
+            "lightdm-gtk": "GNOME works best with GDM. LightDM is a less-tested GNOME combination and may miss session integration.",
+            "lightdm-slick": "GNOME works best with GDM. LightDM is a less-tested GNOME combination and may miss session integration.",
+            "sddm": "GNOME works best with GDM. SDDM can work, but it is not the ideal GNOME greeter.",
+        },
+    },
+    "kde": {
+        "recommended": "sddm",
+        "warnings": {
+            "gdm": "KDE Plasma works best with SDDM. GDM is not the usual Plasma greeter and may feel less integrated.",
+            "ly": "KDE Plasma works best with SDDM. Ly is a lightweight TUI greeter and is not an ideal Plasma match.",
+            "lightdm-gtk": "KDE Plasma works best with SDDM. LightDM is usable, but not the recommended Plasma greeter.",
+            "lightdm-slick": "KDE Plasma works best with SDDM. LightDM is usable, but not the recommended Plasma greeter.",
+        },
+    },
+    "lxqt": {
+        "recommended": "sddm",
+        "warnings": {
+            "gdm": "LXQt works best with SDDM. GDM is a less natural match for LXQt.",
+            "ly": "LXQt works best with SDDM. Ly can work, but it is a less-tested LXQt combination.",
+        },
+    },
+    "xfce": {
+        "recommended": "lightdm-gtk",
+        "warnings": {
+            "gdm": "XFCE is usually paired with LightDM. GDM is a heavier and less typical choice for XFCE.",
+            "sddm": "XFCE is usually paired with LightDM. SDDM can work, but it is not the usual XFCE greeter.",
+        },
+    },
+    "cinnamon": {
+        "recommended": "lightdm-gtk",
+        "warnings": {
+            "gdm": "Cinnamon is usually paired with LightDM. GDM is a less typical choice here.",
+            "sddm": "Cinnamon is usually paired with LightDM. SDDM can work, but it is not the common Cinnamon greeter.",
+        },
+    },
+    "mate": {
+        "recommended": "lightdm-gtk",
+        "warnings": {
+            "gdm": "MATE is usually paired with LightDM. GDM is a less typical choice here.",
+            "sddm": "MATE is usually paired with LightDM. SDDM can work, but it is not the common MATE greeter.",
+        },
+    },
+    "budgie": {
+        "recommended": "lightdm-gtk",
+        "warnings": {
+            "gdm": "Budgie is usually paired with LightDM. GDM is a less typical choice here.",
+            "sddm": "Budgie is usually paired with LightDM. SDDM can work, but it is not the common Budgie greeter.",
+        },
+    },
+    "deepin": {
+        "recommended": "lightdm-gtk",
+        "warnings": {
+            "gdm": "Deepin is usually paired with LightDM. GDM is a less typical choice here.",
+            "sddm": "Deepin is usually paired with LightDM. SDDM can work, but it is not the common Deepin greeter.",
+        },
+    },
+    "enlightenment": {
+        "recommended": "lightdm-gtk",
+        "warnings": {
+            "gdm": "Enlightenment is usually paired with LightDM or started manually. GDM is a less typical choice.",
+            "sddm": "Enlightenment is usually paired with LightDM or started manually. SDDM is a less typical choice.",
+        },
+    },
+    "hyprland": {
+        "recommended": "ly",
+        "warnings": {
+            "gdm": "Hyprland is usually started from Ly, SDDM, or directly from TTY. GDM is not the safest default for Hyprland.",
+            "lightdm-gtk": "Hyprland can work with LightDM, but Ly/SDDM/TTY are usually safer choices.",
+            "lightdm-slick": "Hyprland can work with LightDM, but Ly/SDDM/TTY are usually safer choices.",
+        },
+    },
+    "sway": {
+        "recommended": "ly",
+        "warnings": {
+            "gdm": "Sway is usually started from Ly or directly from TTY. GDM is not the safest default for Sway.",
+            "lightdm-gtk": "Sway can work with LightDM, but Ly/TTY are usually safer choices.",
+            "lightdm-slick": "Sway can work with LightDM, but Ly/TTY are usually safer choices.",
+        },
+    },
+}
+
 # ── Desktop environment definitions ──
 # Each entry includes:
 #   label:            display name in the menu
@@ -390,15 +476,20 @@ def configure_display_manager(screen: Screen, desktop: str) -> str | None:
     if info.get("category") == "none":
         return "none"
 
-    default_dm = info.get("display_manager")
+    desktop_rules = DISPLAY_MANAGER_RECOMMENDATIONS.get(desktop, {})
+    default_dm = desktop_rules.get("recommended", info.get("display_manager"))
     recommended = {
         "gdm": ["gdm", "sddm", "ly", "lightdm-gtk", "lightdm-slick", "none"],
         "sddm": ["sddm", "ly", "lightdm-gtk", "lightdm-slick", "gdm", "none"],
         "lightdm": ["lightdm-gtk", "lightdm-slick", "ly", "sddm", "gdm", "none"],
+        "ly": ["ly", "sddm", "lightdm-gtk", "lightdm-slick", "gdm", "none"],
     }.get(default_dm, ["lightdm-gtk", "ly", "sddm", "gdm", "lightdm-slick", "none"])
 
     options = [
-        DISPLAY_MANAGERS[key]["label"]
+        (
+            f"{DISPLAY_MANAGERS[key]['label']} (recommended)"
+            if key == default_dm else DISPLAY_MANAGERS[key]["label"]
+        )
         for key in recommended
         if key in DISPLAY_MANAGERS
     ]
@@ -412,7 +503,8 @@ def configure_display_manager(screen: Screen, desktop: str) -> str | None:
         return None
 
     for key in recommended:
-        if DISPLAY_MANAGERS.get(key, {}).get("label") == choice:
+        display_label = DISPLAY_MANAGERS.get(key, {}).get("label")
+        if choice in {display_label, f"{display_label} (recommended)"}:
             return key
     return "none"
 
@@ -455,3 +547,10 @@ def get_desktop_category(desktop: str) -> str:
     """Get the category (de/wm/none) for a desktop."""
     info = DESKTOP_ENVIRONMENTS.get(desktop, {})
     return info.get("category", "none")
+
+
+def get_display_manager_warning(desktop: str, display_manager: str) -> str:
+    """Return a warning string for non-ideal desktop/greeter combinations."""
+    rules = DISPLAY_MANAGER_RECOMMENDATIONS.get(desktop, {})
+    warnings = rules.get("warnings", {})
+    return warnings.get(display_manager, "")
