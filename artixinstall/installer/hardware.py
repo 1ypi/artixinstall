@@ -425,3 +425,47 @@ def apply_laptop_power(init_system: str) -> tuple[bool, str]:
 
     log_info(f"Laptop power management configured ({init_system})")
     return True, ""
+def apply_laptop_power(init_system: str) -> tuple[bool, str]:
+    """Enable laptop power management services inside the chroot."""
+    service_packages = {
+        "openrc": ["tlp-openrc", "acpid-openrc"],
+        "runit": ["tlp-runit", "acpid-runit"],
+        "s6": ["tlp-s6", "acpid-s6"],
+        "dinit": ["tlp-dinit", "acpid-dinit"],
+    }
+    enable_cmds = {
+        "openrc": [
+            ("tlp", "rc-update add tlp default"),
+            ("acpid", "rc-update add acpid default"),
+        ],
+        "runit": [
+            ("tlp", "ln -s /etc/runit/sv/tlp /etc/runit/runsvdir/default/"),
+            ("acpid", "ln -s /etc/runit/sv/acpid /etc/runit/runsvdir/default/"),
+        ],
+        "s6": [
+            ("tlp", "s6-rc-bundle-update add default tlp"),
+            ("acpid", "s6-rc-bundle-update add default acpid"),
+        ],
+        "dinit": [
+            ("tlp", "dinitctl enable tlp"),
+            ("acpid", "dinitctl enable acpid"),
+        ],
+    }
+
+    pkgs = service_packages.get(init_system, [])
+    if pkgs:
+        rc, _, stderr = run(
+            ["pacman", "-S", "--noconfirm", "--needed", *pkgs],
+            chroot=True,
+            timeout=1800,
+        )
+        if rc != 0:
+            log_error(f"Failed to install laptop power service packages: {stderr}")
+
+    for service_name, cmd in enable_cmds.get(init_system, []):
+        rc, _, stderr = run(cmd, chroot=True)
+        if rc != 0:
+            log_error(f"Failed to enable {service_name}: {stderr}")
+
+    log_info(f"Laptop power management configured ({init_system})")
+    return True, ""
