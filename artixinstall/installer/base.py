@@ -93,19 +93,32 @@ def install_base_system(init_system: str,
 
 def _validate_package_list(packages: list[str]) -> tuple[bool, str]:
     """
-    Check that requested packages exist in the configured pacman repositories.
+    Check that requested install targets exist in the configured pacman repos.
+
+    Artix desktop selections may include both package names and package-group
+    names (for example `gnome`, `xfce4`, `mate-extra`, `lxqt`). We accept
+    either here so valid group-based DE selections are not rejected before
+    `basestrap`.
     """
     missing = []
 
     for pkg in packages:
         rc, _, stderr = run(["pacman", "-Si", pkg], timeout=30)
-        if rc != 0:
-            missing.append(pkg)
-            if stderr.strip():
-                log_error(f"Package lookup failed for {pkg}: {stderr.strip()}")
+        if rc == 0:
+            continue
+
+        rc_group, group_out, group_err = run(["pacman", "-Sg", pkg], timeout=30)
+        if rc_group == 0 and group_out.strip():
+            continue
+
+        missing.append(pkg)
+        if stderr.strip():
+            log_error(f"Package lookup failed for {pkg}: {stderr.strip()}")
+        elif group_err.strip():
+            log_error(f"Group lookup failed for {pkg}: {group_err.strip()}")
 
     if missing:
-        return False, "These packages were not found in the current repositories: " + ", ".join(missing)
+        return False, "These packages or package groups were not found in the current repositories: " + ", ".join(missing)
 
     return True, ""
 
