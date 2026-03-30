@@ -15,6 +15,7 @@ FILESYSTEM_COMMANDS = {
 
 BASE_LIVE_PACKAGES = [
     "artools-base",
+    "pacman-contrib",
     "util-linux",
     "dosfstools",
     "e2fsprogs",

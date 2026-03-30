@@ -304,6 +304,39 @@ def copy_mirrorlist() -> tuple[bool, str]:
     return True, ""
 
 
+def setup_mirrorlist(mode: str = "fastest") -> tuple[bool, str]:
+    """
+    Prepare the live mirrorlist for basestrap and copy it into the target.
+
+    Modes:
+    - fastest: rank the current Artix mirrorlist and keep the top mirrors
+    - live/default: use the current live mirror configuration as-is
+    - custom URL: write a single custom server line elsewhere before calling this
+    """
+    mirror_path = "/etc/pacman.d/mirrorlist"
+
+    if mode == "fastest":
+        if not command_exists("rankmirrors"):
+            return False, "Fastest-mirror mode requires `rankmirrors`, but it is not available in the live environment."
+        if not os.path.isfile(mirror_path):
+            return False, f"Mirror list not found: {mirror_path}"
+
+        rc, stdout, stderr = run(["rankmirrors", "-n", "6", mirror_path], timeout=300)
+        if rc != 0:
+            return False, f"Failed to rank Artix mirrors: {stderr}"
+        if "Server =" not in stdout:
+            return False, "rankmirrors did not return a usable mirror list."
+
+        try:
+            with open(mirror_path, "w") as f:
+                f.write(stdout)
+            log_info("Ranked Artix mirrors and selected the fastest entries")
+        except OSError as e:
+            return False, f"Failed to write ranked mirror list: {e}"
+
+    return copy_mirrorlist()
+
+
 def copy_pacman_conf() -> tuple[bool, str]:
     """
     Copy /etc/pacman.conf to the target, preserving repo configuration.
