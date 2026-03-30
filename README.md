@@ -186,4 +186,4 @@ All commands are logged to `/tmp/artixinstall.log`.
 
 ## License
 
-MIT — see [LICENSE](LICENSE) for details.
+GPL-3.0 — see [LICENSE](LICENSE) for details.
