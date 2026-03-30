@@ -109,7 +109,7 @@ class InstallerConfig:
 
         # ── Packages ──
         self.additional_packages: list[str] = []
-        self.repositories: dict = {"multilib": True, "universe": False}
+        self.repositories: dict = {"lib32": True, "universe": False}
 
 
 def _build_main_menu(config: InstallerConfig) -> list[MenuItem]:
@@ -170,8 +170,8 @@ def _build_main_menu(config: InstallerConfig) -> list[MenuItem]:
     pkg_set = pkg_count > 0
 
     repo_parts = []
-    if config.repositories.get("multilib"):
-        repo_parts.append("multilib")
+    if config.repositories.get("lib32"):
+        repo_parts.append("lib32")
     if config.repositories.get("universe"):
         repo_parts.append("universe")
     repo_val = ", ".join(repo_parts) if repo_parts else "default"
@@ -516,7 +516,7 @@ def _run_installation(screen: Screen, config: InstallerConfig) -> bool:
     services_to_enable.extend(profile_services)
 
     if any(pkg.startswith("lib32-") for pkg in extra_packages):
-        config.repositories["multilib"] = True
+        config.repositories["lib32"] = True
 
     # Custom mirror setup
     if config.mirrors not in ("fastest", "default", "live") and config.disk:

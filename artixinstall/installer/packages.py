@@ -317,17 +317,17 @@ def configure_repositories(screen: Screen) -> dict | None:
     Returns a dict of repository toggles, or None if cancelled.
     """
     repos = {
-        "multilib": False,
+        "lib32": False,
         "universe": False,
     }
 
     result = yes_no(screen,
-                    "Enable multilib repository?\n"
+                    "Enable lib32 repository?\n"
                     "(Required for 32-bit applications, Steam, Wine, etc.)",
                     default=True)
     if result is None:
         return None
-    repos["multilib"] = result
+    repos["lib32"] = result
 
     result = yes_no(screen,
                     "Enable universe repository?\n"
@@ -399,11 +399,11 @@ def _apply_repositories_to_path(pacman_conf: str, repos: dict) -> tuple[bool, st
         with open(pacman_conf, "r") as f:
             content = f.read()
 
-        if repos.get("multilib"):
+        if repos.get("lib32"):
             original = content
             content = re.sub(
-                r"(?m)^[ \t]*#\s*\[multilib\][ \t]*$",
-                "[multilib]",
+                r"(?m)^[ \t]*#\s*\[lib32\][ \t]*$",
+                "[lib32]",
                 content,
             )
             content = re.sub(
@@ -413,11 +413,11 @@ def _apply_repositories_to_path(pacman_conf: str, repos: dict) -> tuple[bool, st
                 count=1,
             )
 
-            if "[multilib]" not in content:
-                content += "\n[multilib]\nInclude = /etc/pacman.d/mirrorlist\n"
+            if "[lib32]" not in content:
+                content += "\n[lib32]\nInclude = /etc/pacman.d/mirrorlist\n"
 
             if content == original:
-                log_info(f"multilib repository already appeared enabled in {pacman_conf}")
+                log_info(f"lib32 repository already appeared enabled in {pacman_conf}")
 
         if repos.get("universe") and "[universe]" not in content:
             content += "\n[universe]\nServer = https://universe.artixlinux.org/$arch\n"
