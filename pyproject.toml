@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "artixinstall"
-version = "1.0.3"
+version = "1.0.4"
 description = "An interactive TUI installer for Artix Linux with support for OpenRC, runit, s6, and dinit"
 readme = "README.md"
 license = {text = "GPL-3.0-only"}
