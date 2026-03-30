@@ -2,44 +2,6 @@
 
 An interactive, menu-driven TUI installer for **Artix Linux** — the systemd-free Arch-based distribution. Inspired by `archinstall`, built specifically for Artix with full support for all four init systems and comprehensive hardware detection.
 
-```
-╔══════════════════════════════════════════════════════════════════╗
-║                    Artix Install — v1.0.0                        ║
-╠══════════════════════════════════════════════════════════════════╣
-║                                                                  ║
-║   Artix Linux Installation                                       ║
-║                                                                  ║
-║     Language                    [en_US.UTF-8]                    ║
-║     Timezone                    [Europe/Berlin]                  ║
-║     Keyboard layout             [us]                             ║
-║     Mirrors                     [default]                        ║
-║     ──────────────────────────────────                           ║
-║   > Disk configuration          [/dev/nvme0n1 (btrfs, auto)]    ║
-║     Bootloader                  [GRUB]                           ║
-║     ──────────────────────────────────                           ║
-║     Hostname                    [artix]                          ║
-║     Root password               [set]                            ║
-║     User account                [user (sudo)]                   ║
-║     ──────────────────────────────────                           ║
-║     Profile                     [Desktop]                        ║
-║     Init system                 [OpenRC]                         ║
-║     Kernel                      [linux (latest stable)]          ║
-║     Desktop environment         [Hyprland]                       ║
-║     Audio                       [PipeWire]                       ║
-║     Graphics & hardware         [GPU: AMD, WiFi, Bluetooth]     ║
-║     Network manager             [NetworkManager]                 ║
-║     ──────────────────────────────────                           ║
-║     Additional packages         [12 selected]                    ║
-║     Optional repositories       [multilib]                       ║
-║     ──────────────────────────────────                           ║
-║     Install                                                      ║
-║     Abort                                                        ║
-║                                                                  ║
-╠══════════════════════════════════════════════════════════════════╣
-║          ↑↓ Navigate  Enter Configure  Install when ready        ║
-╚══════════════════════════════════════════════════════════════════╝
-```
-
 ## Features
 
 ### Core
