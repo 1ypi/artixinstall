@@ -8,7 +8,7 @@ and offers helper methods for drawing headers, footers, and content areas.
 import curses
 
 # Application version
-VERSION = "1.0.0"
+VERSION = "1.0.2"
 HEADER_TEXT = f"Artix Install — v{VERSION}"
 
 # Color pair IDs

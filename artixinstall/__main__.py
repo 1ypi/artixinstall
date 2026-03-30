@@ -151,7 +151,7 @@ def _build_main_menu(config: InstallerConfig) -> list[MenuItem]:
     audio_label = get_audio_label(config.audio)
     profile_label = get_profile_label(config.profile)
     de_label = get_desktop_label(config.desktop, config.display_manager)
-    dm_enabled = get_desktop_category(config.desktop) == "de"
+    dm_enabled = get_desktop_category(config.desktop) != "none"
     dm_label = get_display_manager_label(config.display_manager) if dm_enabled else "TTY only"
 
     # ── Hardware ──
@@ -281,7 +281,7 @@ def _handle_menu_choice(screen: Screen, config: InstallerConfig,
         result = configure_desktop(screen)
         if result is not None:
             config.desktop = result
-            if get_desktop_category(config.desktop) == "de":
+            if get_desktop_category(config.desktop) != "none":
                 dm_result = configure_display_manager(screen, config.desktop)
                 if dm_result is not None:
                     config.display_manager = dm_result
@@ -289,7 +289,7 @@ def _handle_menu_choice(screen: Screen, config: InstallerConfig,
                 config.display_manager = "none"
 
     elif key == "display_manager":
-        if get_desktop_category(config.desktop) == "de":
+        if get_desktop_category(config.desktop) != "none":
             result = configure_display_manager(screen, config.desktop)
             if result is not None:
                 config.display_manager = result
@@ -391,7 +391,7 @@ def _show_summary(screen: Screen, config: InstallerConfig) -> bool:
     user_info = config.user or {}
     init_label = INIT_SYSTEMS.get(config.init_system, {}).get("label", config.init_system)
     de_label = get_desktop_label(config.desktop, config.display_manager)
-    dm_label = get_display_manager_label(config.display_manager) if get_desktop_category(config.desktop) == "de" else "TTY only"
+    dm_label = get_display_manager_label(config.display_manager) if get_desktop_category(config.desktop) != "none" else "TTY only"
     kernel_label = get_kernel_label(config.kernel)
     audio_label = get_audio_label(config.audio)
     profile_label = get_profile_label(config.profile)

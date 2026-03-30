@@ -385,9 +385,9 @@ def configure_desktop(screen: Screen) -> str | None:
 
 
 def configure_display_manager(screen: Screen, desktop: str) -> str | None:
-    """Choose a display manager / greeter for desktop environments."""
+    """Choose a display manager / greeter for any graphical environment."""
     info = DESKTOP_ENVIRONMENTS.get(desktop, {})
-    if info.get("category") != "de":
+    if info.get("category") == "none":
         return "none"
 
     default_dm = info.get("display_manager")
@@ -440,7 +440,7 @@ def get_desktop_label(desktop: str, display_manager: str = "none") -> str:
     info = DESKTOP_ENVIRONMENTS.get(desktop, {})
     label = info.get("label", desktop)
     dm_label = DISPLAY_MANAGERS.get(display_manager, {}).get("label")
-    if info.get("category") == "de" and display_manager != "none" and dm_label:
+    if info.get("category") != "none" and display_manager != "none" and dm_label:
         return f"{label} + {dm_label}"
     return label
 
