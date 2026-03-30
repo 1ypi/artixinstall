@@ -64,22 +64,25 @@ Boot into a live Artix Linux ISO, connect to the internet, then:
 
 - Ethernet should usually work automatically via DHCP.
 - If you are using Wi-Fi, connect before starting the installer.
+- `artixinstall` is meant to be run on the Artix live ISO, not on Windows.
 - Artix documentation links:
   https://wiki.artixlinux.org/Main/Installation
   https://wiki.artixlinux.org/Main/InstallationOnZFS
 
 ```bash
-pacman -Sy git
 pacman -Sy python --overwrite 'x'
-
-# Clone the repository
-git clone https://github.com/1ypi/artixinstall.git
-cd artixinstall
-
-python -m artixinstall
+python -m pip install --upgrade artixinstall
+artixinstall
 ```
 
-No `pip install` needed, just clone and run.
+If you prefer running from source instead of PyPI:
+
+```bash
+pacman -Sy git python --overwrite 'x'
+git clone https://github.com/1ypi/artixinstall.git
+cd artixinstall
+python -m artixinstall
+```
 
 ## Notes
 
@@ -118,7 +121,7 @@ artixinstall/
 │   ├── hardware.py           # GPU, WiFi, Bluetooth, laptop detection
 │   └── packages.py           # Kernel, audio, profiles, package browser
 ├── data/
-│   ├── services.json         # Service-to-init mapping (12 services × 4 inits)
+│   ├── services.json         # Service-to-init mapping (13 services × 4 inits)
 │   ├── mirrors.txt           # Default Artix mirror list
 │   └── locales.txt           # 30 common locales
 ├── utils/

@@ -1,10 +1,10 @@
 [build-system]
 requires = ["setuptools>=61.0"]
-build-backend = "setuptools.backends._legacy:_Backend"
+build-backend = "setuptools.build_meta"
 
 [project]
 name = "artixinstall"
-version = "1.0.0"
+version = "1.0.1"
 description = "An interactive TUI installer for Artix Linux with support for OpenRC, runit, s6, and dinit"
 readme = "README.md"
 license = {text = "MIT"}
@@ -27,3 +27,14 @@ classifiers = [
 
 [project.scripts]
 artixinstall = "artixinstall.__main__:main"
+
+[project.urls]
+Homepage = "https://github.com/1ypi/artixinstall"
+Repository = "https://github.com/1ypi/artixinstall"
+Issues = "https://github.com/1ypi/artixinstall/issues"
+
+[tool.setuptools]
+include-package-data = false
+
+[tool.setuptools.packages.find]
+exclude = ["*.__pycache__", "*.__pycache__.*", "__pycache__", "__pycache__.*"]
