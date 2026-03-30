@@ -39,7 +39,6 @@ INIT_SYSTEMS = {
 _services_data: dict | None = None
 
 SERVICE_ENABLE_ALIASES = {
-    "bluetoothd": {"openrc": ["bluetooth"]},
     "cups": {"openrc": ["cupsd"]},
     "alsa": {"openrc": ["alsasound"]},
 }
@@ -132,6 +131,40 @@ def enable_service(service_name: str, init_system: str) -> tuple[bool, str]:
         msg = f"No enable command found for {service_name} on {init_system}"
         log_error(msg)
         return False, msg
+
+    if init_system == "openrc":
+        service_script = service_name
+        aliases = SERVICE_ENABLE_ALIASES.get(service_name, {}).get(init_system, [])
+        candidates = [service_name, *aliases]
+
+        script_exists = False
+        for candidate in candidates:
+            rc_check, _, _ = run(["test", "-f", f"/etc/init.d/{candidate}"], chroot=True)
+            if rc_check == 0:
+                service_script = candidate
+                script_exists = True
+                break
+
+        if not script_exists:
+            pkg = get_service_package(service_name, init_system)
+            if pkg:
+                rc_pkg, _, stderr_pkg = run(
+                    ["pacman", "-S", "--noconfirm", "--needed", pkg],
+                    chroot=True,
+                    timeout=1800,
+                )
+                if rc_pkg != 0:
+                    return False, f"Failed to install {pkg} for {service_name}: {stderr_pkg}"
+
+                for candidate in candidates:
+                    rc_check, _, _ = run(["test", "-f", f"/etc/init.d/{candidate}"], chroot=True)
+                    if rc_check == 0:
+                        service_script = candidate
+                        script_exists = True
+                        break
+
+        if script_exists and cmd.startswith("rc-update add "):
+            cmd = f"rc-update add {service_script} default"
 
     rc, stdout, stderr = run(cmd, chroot=True)
     if rc != 0:
