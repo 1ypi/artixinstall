@@ -6,6 +6,7 @@ the selected bootloader inside the chroot, including LUKS encryption support.
 """
 
 import os
+import re
 
 from artixinstall.utils.shell import run, MOUNT_POINT
 from artixinstall.utils.log import log_info, log_error
@@ -111,12 +112,21 @@ def _install_grub(efi: bool, disk: str, disk_config: dict,
                 with open(grub_default, "r") as f:
                     content = f.read()
 
-                # Add cryptdevice parameter
-                crypto_line = f'GRUB_CMDLINE_LINUX="cryptdevice=UUID={root_uuid}:cryptroot root=/dev/mapper/cryptroot"'
-                content = content.replace(
-                    'GRUB_CMDLINE_LINUX=""',
-                    crypto_line,
-                )
+                # Add cryptdevice parameter regardless of the existing defaults.
+                crypto_args = f"cryptdevice=UUID={root_uuid}:cryptroot root=/dev/mapper/cryptroot"
+                cmdline_match = re.search(r'^GRUB_CMDLINE_LINUX="([^"]*)"', content, re.MULTILINE)
+                if cmdline_match:
+                    existing_args = cmdline_match.group(1).strip()
+                    merged_args = f"{crypto_args} {existing_args}".strip()
+                    merged_args = " ".join(dict.fromkeys(merged_args.split()))
+                    crypto_line = f'GRUB_CMDLINE_LINUX="{merged_args}"'
+                    content = (
+                        content[:cmdline_match.start()]
+                        + crypto_line
+                        + content[cmdline_match.end():]
+                    )
+                else:
+                    content += f'\nGRUB_CMDLINE_LINUX="{crypto_args}"\n'
 
                 # Enable GRUB_ENABLE_CRYPTODISK
                 if "GRUB_ENABLE_CRYPTODISK" not in content:

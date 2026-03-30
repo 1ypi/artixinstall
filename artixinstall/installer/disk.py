@@ -6,6 +6,7 @@ EFI and BIOS systems, multiple filesystems, optional swap, and LUKS encryption.
 """
 
 import os
+import re
 from artixinstall.utils.shell import run, run_live, command_exists, MOUNT_POINT
 from artixinstall.utils.log import log_info, log_error
 from artixinstall.tui.screen import Screen
@@ -769,27 +770,42 @@ def setup_luks_hooks(config: dict) -> tuple[bool, str]:
     mkinitcpio_path = os.path.join(MOUNT_POINT, "etc", "mkinitcpio.conf")
 
     try:
-        with open(mkinitcpio_path, "r") as f:
+        with open(mkinitcpio_path, "r", encoding="utf-8") as f:
             content = f.read()
 
-        # Add encrypt hook before filesystems
-        if "encrypt" not in content:
-            content = content.replace(
-                "HOOKS=(base udev autodetect modconf block filesystems keyboard fsck)",
-                "HOOKS=(base udev autodetect modconf block encrypt filesystems keyboard fsck)",
-            )
-            # Also handle other common formats
-            content = content.replace(
-                "HOOKS=(base udev autodetect microcode modconf kms keyboard keymap consolefont block filesystems fsck)",
-                "HOOKS=(base udev autodetect microcode modconf kms keyboard keymap consolefont block encrypt filesystems fsck)",
-            )
+        hooks_match = re.search(r"^HOOKS=\(([^)]*)\)", content, re.MULTILINE)
+        if hooks_match:
+            hooks = hooks_match.group(1).split()
+            if "encrypt" not in hooks:
+                if "filesystems" in hooks:
+                    hooks.insert(hooks.index("filesystems"), "encrypt")
+                else:
+                    hooks.append("encrypt")
 
-        with open(mkinitcpio_path, "w") as f:
+            if "keyboard" in hooks and hooks.index("keyboard") > hooks.index("encrypt"):
+                hooks.remove("keyboard")
+                hooks.insert(hooks.index("encrypt"), "keyboard")
+            if "keymap" in hooks and hooks.index("keymap") > hooks.index("encrypt"):
+                hooks.remove("keymap")
+                insert_at = hooks.index("encrypt")
+                if "keyboard" in hooks:
+                    insert_at = max(insert_at, hooks.index("keyboard") + 1)
+                hooks.insert(insert_at, "keymap")
+
+            new_hooks = f"HOOKS=({' '.join(hooks)})"
+            content = content[:hooks_match.start()] + new_hooks + content[hooks_match.end():]
+        else:
+            content += "\nHOOKS=(base udev autodetect modconf block keyboard keymap encrypt filesystems fsck)\n"
+
+        if "encrypt" not in content:
+            return False, "Failed to add the mkinitcpio encrypt hook for the encrypted root."
+
+        with open(mkinitcpio_path, "w", encoding="utf-8") as f:
             f.write(content)
 
     except OSError as e:
         log_error(f"Failed to update mkinitcpio.conf: {e}")
-        # Try to continue anyway
+        return False, f"Failed to update mkinitcpio.conf: {e}"
 
     # Regenerate initramfs
     rc, _, stderr = run("mkinitcpio -P", chroot=True)

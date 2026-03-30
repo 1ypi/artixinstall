@@ -512,6 +512,10 @@ def _run_installation(screen: Screen, config: InstallerConfig) -> bool:
     if config.hardware:
         extra_packages.extend(config.hardware.get_all_packages())
 
+    # Encryption packages for the installed system
+    if config.disk and config.disk.get("encrypt"):
+        extra_packages.append("cryptsetup")
+
     # User-selected additional packages
     extra_packages.extend(config.additional_packages)
 
