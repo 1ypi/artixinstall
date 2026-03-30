@@ -4,6 +4,10 @@ artixinstall.installer.prereqs - Live ISO prerequisite checks.
 
 from artixinstall.utils.shell import command_exists, run
 from artixinstall.utils.log import log_info
+from artixinstall.installer.packages import (
+    backup_live_package_config,
+    restore_live_package_config,
+)
 
 
 FILESYSTEM_COMMANDS = {
@@ -63,6 +67,14 @@ def install_live_prerequisites(disk_config: dict | None) -> tuple[bool, str]:
     """
     if not command_exists("pacman"):
         return False, "The live environment does not provide `pacman`, so prerequisites cannot be installed automatically."
+
+    ok, message = backup_live_package_config()
+    if not ok:
+        return False, message
+
+    ok, message = restore_live_package_config()
+    if not ok:
+        return False, message
 
     packages = get_live_packages(disk_config)
     log_info(f"Installing live prerequisites: {' '.join(packages)}")

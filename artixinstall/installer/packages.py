@@ -5,6 +5,8 @@ package management, optional repositories, and installation profiles.
 Mirrors archinstall's package-related configuration options.
 """
 
+from pathlib import Path
+
 from artixinstall.utils.log import log_info
 from artixinstall.utils.shell import run
 from artixinstall.tui.screen import Screen
@@ -169,6 +171,11 @@ PACKAGE_GROUPS = {
         "mangohud": "MangoHUD (FPS overlay)",
         "lib32-mesa": "32-bit Mesa (needed for many games)",
     },
+}
+
+_LIVE_PACMAN_BACKUPS = {
+    "/etc/pacman.conf": Path("/tmp/artixinstall-pacman.conf.bak"),
+    "/etc/pacman.d/mirrorlist": Path("/tmp/artixinstall-mirrorlist.bak"),
 }
 
 
@@ -387,6 +394,34 @@ def get_profile_label(profile: str) -> str:
     return info.get("label", profile)
 
 
+def backup_live_package_config() -> tuple[bool, str]:
+    """Save the original live pacman configuration for safe retries."""
+    import shutil
+
+    try:
+        for src, backup in _LIVE_PACMAN_BACKUPS.items():
+            src_path = Path(src)
+            if src_path.is_file() and not backup.exists():
+                backup.parent.mkdir(parents=True, exist_ok=True)
+                shutil.copy2(src_path, backup)
+        return True, ""
+    except OSError as e:
+        return False, f"Failed to back up live package configuration: {e}"
+
+
+def restore_live_package_config() -> tuple[bool, str]:
+    """Restore pacman.conf and mirrorlist to their original live-ISO state."""
+    import shutil
+
+    try:
+        for dst, backup in _LIVE_PACMAN_BACKUPS.items():
+            if backup.is_file():
+                shutil.copy2(backup, dst)
+        return True, ""
+    except OSError as e:
+        return False, f"Failed to restore live package configuration: {e}"
+
+
 def _apply_repositories_to_path(pacman_conf: str, repos: dict) -> tuple[bool, str]:
     """Enable optional repositories in the given pacman.conf path."""
     import os
@@ -401,19 +436,17 @@ def _apply_repositories_to_path(pacman_conf: str, repos: dict) -> tuple[bool, st
 
         if repos.get("lib32"):
             original = content
-            content = re.sub(
-                r"(?m)^[ \t]*#\s*\[lib32\][ \t]*$",
-                "[lib32]",
-                content,
-            )
-            content = re.sub(
-                r"(?m)^[ \t]*#\s*Include\s*=\s*/etc/pacman\.d/mirrorlist[ \t]*$",
-                "Include = /etc/pacman.d/mirrorlist",
-                content,
-                count=1,
+            lib32_block = re.compile(
+                r"(?ms)^[ \t]*#?\s*\[lib32\][ \t]*\n(?:[ \t]*#.*\n)*[ \t]*#?\s*Include\s*=\s*/etc/pacman\.d/mirrorlist[ \t]*"
             )
 
-            if "[lib32]" not in content:
+            if lib32_block.search(content):
+                content = lib32_block.sub(
+                    "[lib32]\nInclude = /etc/pacman.d/mirrorlist",
+                    content,
+                    count=1,
+                )
+            else:
                 content += "\n[lib32]\nInclude = /etc/pacman.d/mirrorlist\n"
 
             if content == original:
