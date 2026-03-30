@@ -70,15 +70,17 @@ Boot into a live Artix Linux ISO, connect to the internet, then:
   https://wiki.artixlinux.org/Main/InstallationOnZFS
 
 ```bash
-pacman -Syu python python-pip --overwrite '*'
-python -m pip install --upgrade artixinstall
+pacman -Sy python python-pipx expat --overwrite '*'
+pipx install artixinstall
+pipx ensurepath
+exec $SHELL
 artixinstall
 ```
 
 If you prefer running from source instead of PyPI:
 
 ```bash
-pacman -Syu git python python-pip --overwrite '*'
+pacman -Sy git python --overwrite '*'
 git clone https://github.com/1ypi/artixinstall.git
 cd artixinstall
 python -m artixinstall
