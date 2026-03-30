@@ -135,5 +135,24 @@ def apply_user(user_config: dict) -> tuple[bool, str]:
                 log_error(f"Failed to enable sudo for wheel: {stderr}")
                 # Non-fatal — continue
 
+    run(
+        f"mkdir -p /home/{username}/Desktop /home/{username}/Documents /home/{username}/Downloads "
+        f"/home/{username}/Music /home/{username}/Pictures /home/{username}/Public "
+        f"/home/{username}/Templates /home/{username}/Videos",
+        chroot=True,
+    )
+    run(
+        f"chown -R {username}:{username} /home/{username}",
+        chroot=True,
+    )
+
+    if run("command -v xdg-user-dirs-update", chroot=True)[0] == 0:
+        rc, _, stderr = run(
+            f"su - {username} -c 'xdg-user-dirs-update'",
+            chroot=True,
+        )
+        if rc != 0:
+            log_error(f"Failed to initialize XDG user dirs: {stderr}")
+
     log_info(f"User '{username}' created (sudo={sudo})")
     return True, ""

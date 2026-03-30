@@ -16,7 +16,7 @@ import shutil
 from pathlib import Path
 
 from artixinstall.tui.screen import Screen, VERSION, COLOR_VALUE_SET, COLOR_VALUE_UNSET, COLOR_TITLE, COLOR_ERROR, COLOR_SEPARATOR
-from artixinstall.tui.menu import run_menu, MenuItem
+from artixinstall.tui.menu import run_menu, run_selection_menu, MenuItem
 from artixinstall.tui.prompts import confirm_destructive, show_progress
 from artixinstall.utils.log import init_log, log_info, log_error
 
@@ -121,7 +121,8 @@ def _build_main_menu(config: InstallerConfig) -> list[MenuItem]:
         fs = config.disk.get("filesystem", "?")
         layout = config.disk.get("layout", "?")
         enc = " + LUKS" if config.disk.get("encrypt") else ""
-        disk_val = f"{disk} ({fs}, {layout}{enc})"
+        home = " + /home" if config.disk.get("home") else ""
+        disk_val = f"{disk} ({fs}, {layout}{enc}{home})"
         disk_set = True
 
     # ── Bootloader ──
@@ -383,6 +384,7 @@ def _show_summary(screen: Screen, config: InstallerConfig) -> bool:
     lines = [
         f"Disk:              {disk_info.get('disk', '?')} ({disk_info.get('filesystem', '?')}, {disk_info.get('layout', '?')}){enc}",
         f"Swap:              {'Yes' if disk_info.get('swap') else 'No'}",
+        f"Separate /home:    {'Yes' if disk_info.get('home') else 'No'}",
         f"Boot mode:         {'UEFI' if disk_info.get('efi') else 'BIOS'}",
         f"Bootloader:        {config.bootloader}",
         "",
@@ -632,15 +634,7 @@ def _run_installation(screen: Screen, config: InstallerConfig) -> bool:
     success = show_progress(screen, steps)
 
     if success:
-        screen.show_success(
-            "Installation complete!\n\n"
-            "You may now reboot into your new Artix Linux system.\n\n"
-            "  1. Exit the installer\n"
-            "  2. Run: umount -R /mnt\n"
-            "  3. Run: reboot\n\n"
-            "Enjoy your new system!"
-        )
-        return False  # Exit the installer
+        return _handle_post_install(screen, config)
     else:
         screen.show_error(
             "Installation encountered errors.\n"
@@ -648,6 +642,46 @@ def _run_installation(screen: Screen, config: InstallerConfig) -> bool:
             "You can retry from the main menu."
         )
         return True  # Stay in main menu
+
+
+def _handle_post_install(screen: Screen, config: InstallerConfig) -> bool:
+    """Offer reboot/chroot actions after a successful installation."""
+    from artixinstall.utils.shell import run_live, MOUNT_POINT
+
+    while True:
+        choice = run_selection_menu(screen, "Installation complete - next step", [
+            "Unmount everything and reboot now",
+            "Chroot into the new system first",
+            "Exit installer only",
+        ])
+
+        if choice is None or choice.startswith("Exit installer"):
+            screen.show_success(
+                "Installation complete.\n\n"
+                "You can exit now and reboot later when ready."
+            )
+            return False
+
+        if choice.startswith("Unmount everything"):
+            unmount_all()
+            run_live("reboot")
+            return False
+
+        if choice.startswith("Chroot"):
+            try:
+                curses.endwin()
+            except Exception:
+                pass
+            run_live(f"artix-chroot {MOUNT_POINT} /bin/bash")
+            try:
+                curses.reset_prog_mode()
+            except Exception:
+                pass
+            screen.stdscr.refresh()
+            screen.show_success(
+                "Exited chroot.\n\n"
+                "You can now choose whether to reboot or exit the installer."
+            )
 
 
 def _finalize(config: InstallerConfig) -> tuple[bool, str]:

@@ -47,6 +47,7 @@ def install_base_system(init_system: str,
         "nano",
         "vim",
         "mkinitcpio",
+        "xdg-user-dirs",
     ])
 
     # Add extra packages

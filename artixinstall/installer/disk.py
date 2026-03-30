@@ -149,6 +149,22 @@ def _automatic_partition(screen: Screen, disk_path: str, efi: bool) -> dict | No
     use_swap = not swap_choice.startswith("Without")
     swap_size_mb = 8192 if "8 GB" in swap_choice else 4096
 
+    home_result = yes_no(screen, "Create a separate /home partition?", default=False)
+    if home_result is None:
+        return None
+    separate_home = home_result
+    root_size_mb = 0
+    if separate_home:
+        root_size = run_selection_menu(screen, "Root partition size (the rest goes to /home)", [
+            "30 GB",
+            "50 GB",
+            "80 GB",
+            "100 GB",
+        ])
+        if root_size is None:
+            return None
+        root_size_mb = int(root_size.split()[0]) * 1024
+
     # Ask about filesystem
     fs = run_selection_menu(screen, "Root filesystem", [
         "ext4 (recommended, mature, reliable)",
@@ -199,12 +215,15 @@ def _automatic_partition(screen: Screen, disk_path: str, efi: bool) -> dict | No
         "disk": disk_path,
         "layout": "auto",
         "swap": use_swap,
+        "home": separate_home,
         "swap_size_mb": swap_size_mb if use_swap else 0,
+        "root_size_mb": root_size_mb,
         "filesystem": filesystem,
         "efi": efi,
         "boot_part": f"{part_prefix}1",
         "root_part": "",
         "swap_part": "",
+        "home_part": "",
         "encrypt": encrypt,
         "encrypt_password": encrypt_password,
     }
@@ -212,8 +231,12 @@ def _automatic_partition(screen: Screen, disk_path: str, efi: bool) -> dict | No
     if use_swap:
         config["swap_part"] = f"{part_prefix}2"
         config["root_part"] = f"{part_prefix}3"
+        if separate_home:
+            config["home_part"] = f"{part_prefix}4"
     else:
         config["root_part"] = f"{part_prefix}2"
+        if separate_home:
+            config["home_part"] = f"{part_prefix}3"
 
     return config
 
@@ -294,9 +317,18 @@ def _manual_partition(screen: Screen, disk_path: str, efi: bool) -> dict | None:
         return None
     root_part = parts[part_labels.index(root_sel)]["path"]
 
-    # Ask about swap
+    # Ask about optional /home and swap
     swap_part = ""
+    home_part = ""
     remaining2 = [l for l in remaining if l != root_sel]
+    if remaining2:
+        use_home = yes_no(screen, "Do you have a separate /home partition?", default=False)
+        if use_home:
+            home_sel = run_selection_menu(screen, "Select HOME partition", remaining2)
+            if home_sel:
+                home_part = parts[part_labels.index(home_sel)]["path"]
+                remaining2 = [l for l in remaining2 if l != home_sel]
+
     if remaining2:
         use_swap = yes_no(screen, "Do you have a swap partition?", default=False)
         if use_swap:
@@ -333,12 +365,15 @@ def _manual_partition(screen: Screen, disk_path: str, efi: bool) -> dict | None:
         "disk": disk_path,
         "layout": "manual",
         "swap": bool(swap_part),
+        "home": bool(home_part),
         "swap_size_mb": 0,
+        "root_size_mb": 0,
         "filesystem": filesystem,
         "efi": efi,
         "boot_part": boot_part,
         "root_part": root_part,
         "swap_part": swap_part,
+        "home_part": home_part,
         "encrypt": encrypt,
         "encrypt_password": encrypt_password,
     }
@@ -478,7 +513,9 @@ def partition_disk(config: dict) -> tuple[bool, str]:
     disk = config["disk"]
     efi = config["efi"]
     use_swap = config["swap"]
+    use_home = config.get("home", False)
     swap_size_mb = config.get("swap_size_mb", 4096)
+    root_size_mb = config.get("root_size_mb", 0)
 
     if not _device_exists(disk):
         return False, f"Target disk does not exist: {disk}"
@@ -520,13 +557,31 @@ def partition_disk(config: dict) -> tuple[bool, str]:
         rc, _, err = run(["parted", "-s", disk, "mkpart", "primary", "linux-swap", f"{boot_end}MiB", f"{swap_end}MiB"])
         if rc != 0:
             return False, f"Failed to create swap partition: {err}"
-        rc, _, err = run(["parted", "-s", disk, "mkpart", "primary", f"{swap_end}MiB", "100%"])
-        if rc != 0:
-            return False, f"Failed to create root partition: {err}"
+        if use_home and root_size_mb > 0:
+            root_end = swap_end + root_size_mb
+            rc, _, err = run(["parted", "-s", disk, "mkpart", "primary", f"{swap_end}MiB", f"{root_end}MiB"])
+            if rc != 0:
+                return False, f"Failed to create root partition: {err}"
+            rc, _, err = run(["parted", "-s", disk, "mkpart", "primary", f"{root_end}MiB", "100%"])
+            if rc != 0:
+                return False, f"Failed to create home partition: {err}"
+        else:
+            rc, _, err = run(["parted", "-s", disk, "mkpart", "primary", f"{swap_end}MiB", "100%"])
+            if rc != 0:
+                return False, f"Failed to create root partition: {err}"
     else:
-        rc, _, err = run(["parted", "-s", disk, "mkpart", "primary", f"{boot_end}MiB", "100%"])
-        if rc != 0:
-            return False, f"Failed to create root partition: {err}"
+        if use_home and root_size_mb > 0:
+            root_end = boot_end + root_size_mb
+            rc, _, err = run(["parted", "-s", disk, "mkpart", "primary", f"{boot_end}MiB", f"{root_end}MiB"])
+            if rc != 0:
+                return False, f"Failed to create root partition: {err}"
+            rc, _, err = run(["parted", "-s", disk, "mkpart", "primary", f"{root_end}MiB", "100%"])
+            if rc != 0:
+                return False, f"Failed to create home partition: {err}"
+        else:
+            rc, _, err = run(["parted", "-s", disk, "mkpart", "primary", f"{boot_end}MiB", "100%"])
+            if rc != 0:
+                return False, f"Failed to create root partition: {err}"
 
     # Wait for kernel to pick up new partitions
     if command_exists("partprobe"):
@@ -535,7 +590,7 @@ def partition_disk(config: dict) -> tuple[bool, str]:
         run(["udevadm", "settle"])
     run(["sleep", "2"])
 
-    for key in ("boot_part", "root_part", "swap_part"):
+    for key in ("boot_part", "root_part", "swap_part", "home_part"):
         part = config.get(key)
         if part and not _wait_for_device(part):
             return False, f"Partition device did not appear after partitioning: {part}"
@@ -549,6 +604,7 @@ def format_partitions(config: dict) -> tuple[bool, str]:
     boot_part = config["boot_part"]
     root_part = config["root_part"]
     swap_part = config.get("swap_part", "")
+    home_part = config.get("home_part", "")
     filesystem = config["filesystem"]
     efi = config["efi"]
     encrypt = config.get("encrypt", False)
@@ -560,6 +616,8 @@ def format_partitions(config: dict) -> tuple[bool, str]:
         return False, f"Root partition does not exist: {root_part}"
     if swap_part and not _device_exists(swap_part):
         return False, f"Swap partition does not exist: {swap_part}"
+    if home_part and not _device_exists(home_part):
+        return False, f"Home partition does not exist: {home_part}"
 
     # Format boot partition
     if efi:
@@ -612,6 +670,13 @@ def format_partitions(config: dict) -> tuple[bool, str]:
     if rc != 0:
         return False, f"Failed to format root partition: {err}"
 
+    if home_part:
+        home_cmd = fs_cmd.get(filesystem, ["mkfs.ext4", "-F", home_part]).copy()
+        home_cmd[-1] = home_part
+        rc, _, err = run(home_cmd)
+        if rc != 0:
+            return False, f"Failed to format home partition: {err}"
+
     # Format swap if applicable
     if swap_part:
         if not command_exists("mkswap"):
@@ -636,6 +701,7 @@ def mount_partitions(config: dict) -> tuple[bool, str]:
 
     boot_part = config["boot_part"]
     swap_part = config.get("swap_part", "")
+    home_part = config.get("home_part", "")
 
     if not _device_exists(root_dev):
         return False, f"Root device is not available: {root_dev}"
@@ -643,6 +709,8 @@ def mount_partitions(config: dict) -> tuple[bool, str]:
         return False, f"Boot partition is not available: {boot_part}"
     if swap_part and not _device_exists(swap_part):
         return False, f"Swap partition is not available: {swap_part}"
+    if home_part and not _device_exists(home_part):
+        return False, f"Home partition is not available: {home_part}"
 
     os.makedirs(MOUNT_POINT, exist_ok=True)
 
@@ -660,6 +728,16 @@ def mount_partitions(config: dict) -> tuple[bool, str]:
     rc, _, err = run(["mount", boot_part, f"{MOUNT_POINT}/boot"])
     if rc != 0:
         return False, f"Failed to mount boot: {err}"
+
+    if home_part:
+        try:
+            os.makedirs(f"{MOUNT_POINT}/home", exist_ok=True)
+        except OSError as e:
+            return False, f"Failed to create /home: {e}"
+
+        rc, _, err = run(["mount", home_part, f"{MOUNT_POINT}/home"])
+        if rc != 0:
+            return False, f"Failed to mount home: {err}"
 
     # Enable swap
     if swap_part:
