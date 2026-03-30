@@ -18,7 +18,7 @@
     "dinit":   { "package": "wpa_supplicant-dinit",    "enable": "dinitctl enable wpa_supplicant" }
   },
   "bluetoothd": {
-    "openrc":  { "package": "bluez-openrc",  "enable": "rc-update add bluetoothd default" },
+    "openrc":  { "package": "bluez-openrc",  "enable": "rc-update add bluetooth default" },
     "runit":   { "package": "bluez-runit",   "enable": "ln -s /etc/runit/sv/bluetoothd /etc/runit/runsvdir/default/" },
     "s6":      { "package": "bluez-s6",      "enable": "s6-rc-bundle-update add default bluetoothd" },
     "dinit":   { "package": "bluez-dinit",    "enable": "dinitctl enable bluetoothd" }
