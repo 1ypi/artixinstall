@@ -68,6 +68,15 @@ def log_output(stdout: str, stderr: str) -> None:
         pass
 
 
+def log_live_output(line: str) -> None:
+    """Log a single line from a live-streamed command."""
+    try:
+        with open(LOG_PATH, "a") as f:
+            f.write(f"{_timestamp()} LIVE: {_mask_passwords(line.rstrip())}\n")
+    except OSError:
+        pass
+
+
 def log_info(message: str) -> None:
     """Log an informational message."""
     try:

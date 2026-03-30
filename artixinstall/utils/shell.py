@@ -11,7 +11,7 @@ import shutil
 import subprocess
 from typing import Union
 
-from artixinstall.utils.log import log_cmd, log_output, log_error, log_info
+from artixinstall.utils.log import log_cmd, log_output, log_error, log_info, log_live_output
 
 # The mount point used for the target system
 MOUNT_POINT = "/mnt"
@@ -129,20 +129,41 @@ def run_live_result(
         log_cmd("(live) " + " ".join(shlex.quote(c) for c in cmd_value))
 
     try:
-        result = subprocess.run(
+        process = subprocess.Popen(
             cmd_value,
             shell=isinstance(cmd_value, str),
             text=True,
-            input=input_text,
-            timeout=timeout,
+            stdin=subprocess.PIPE if input_text is not None else None,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            bufsize=1,
         )
-        if result.returncode != 0:
-            msg = f"Command exited with status {result.returncode}"
+
+        if input_text is not None and process.stdin is not None:
+            process.stdin.write(input_text)
+            process.stdin.close()
+
+        output_tail: list[str] = []
+        assert process.stdout is not None
+        for line in process.stdout:
+            print(line, end="")
+            log_live_output(line)
+            output_tail.append(line.rstrip())
+            if len(output_tail) > 20:
+                output_tail.pop(0)
+
+        result_rc = process.wait(timeout=timeout)
+        if result_rc != 0:
+            msg = "\n".join(output_tail).strip() or f"Command exited with status {result_rc}"
             log_error(msg)
-            return result.returncode, msg
+            return result_rc, msg
         log_info("Live command completed successfully")
-        return result.returncode, ""
+        return result_rc, ""
     except subprocess.TimeoutExpired:
+        try:
+            process.kill()
+        except Exception:
+            pass
         msg = f"Live command timed out after {timeout}s"
         log_error(msg)
         return 124, msg
