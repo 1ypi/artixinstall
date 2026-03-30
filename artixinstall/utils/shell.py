@@ -11,7 +11,7 @@ import shutil
 import subprocess
 from typing import Union
 
-from artixinstall.utils.log import log_cmd, log_output, log_error
+from artixinstall.utils.log import log_cmd, log_output, log_error, log_info
 
 # The mount point used for the target system
 MOUNT_POINT = "/mnt"
@@ -99,6 +99,57 @@ def run_live(cmd: str) -> int:
     except Exception as e:
         log_error(f"Live command failed: {e}")
         return 1
+
+
+def run_live_result(
+    cmd: Union[str, list],
+    chroot: bool = False,
+    input_text: str | None = None,
+    timeout: int | None = None,
+) -> tuple[int, str]:
+    """
+    Execute a command with direct terminal access and return (rc, error_message).
+
+    Used for commands like `basestrap` where seeing live output is more useful
+    than capturing it in the curses UI.
+    """
+    if isinstance(cmd, list):
+        cmd_value = [str(c) for c in cmd]
+        log_cmd("(live) " + " ".join(shlex.quote(c) for c in cmd_value))
+    else:
+        cmd_value = cmd
+        log_cmd(f"(live) {cmd}")
+
+    if chroot:
+        if isinstance(cmd, list):
+            inner_cmd = " ".join(shlex.quote(str(c)) for c in cmd)
+        else:
+            inner_cmd = cmd
+        cmd_value = ["artix-chroot", MOUNT_POINT, "/bin/bash", "-c", inner_cmd]
+        log_cmd("(live) " + " ".join(shlex.quote(c) for c in cmd_value))
+
+    try:
+        result = subprocess.run(
+            cmd_value,
+            shell=isinstance(cmd_value, str),
+            text=True,
+            input=input_text,
+            timeout=timeout,
+        )
+        if result.returncode != 0:
+            msg = f"Command exited with status {result.returncode}"
+            log_error(msg)
+            return result.returncode, msg
+        log_info("Live command completed successfully")
+        return result.returncode, ""
+    except subprocess.TimeoutExpired:
+        msg = f"Live command timed out after {timeout}s"
+        log_error(msg)
+        return 124, msg
+    except Exception as e:
+        msg = f"Failed to execute live command: {e}"
+        log_error(msg)
+        return 1, msg
 
 
 def command_exists(command: str) -> bool:

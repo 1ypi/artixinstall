@@ -8,14 +8,15 @@ generating/verifying the fstab file.
 import os
 import shutil
 
-from artixinstall.utils.shell import run, command_exists, MOUNT_POINT
+from artixinstall.utils.shell import run, run_live_result, command_exists, MOUNT_POINT
 from artixinstall.utils.log import log_info, log_error
 from artixinstall.installer.init import get_base_packages, get_all_service_packages
 
 
 def install_base_system(init_system: str,
                         extra_packages: list[str] | None = None,
-                        kernel: str = "linux") -> tuple[bool, str]:
+                        kernel: str = "linux",
+                        live_output: bool = False) -> tuple[bool, str]:
     """
     Install the base Artix system using basestrap.
 
@@ -66,6 +67,16 @@ def install_base_system(init_system: str,
 
     pkg_str = " ".join(unique_packages)
     log_info(f"Installing base system: basestrap {MOUNT_POINT} {pkg_str}")
+
+    if live_output:
+        rc, err = run_live_result(
+            ["basestrap", MOUNT_POINT, *unique_packages],
+            timeout=3600,
+        )
+        if rc != 0:
+            return False, f"basestrap failed: {err}"
+        log_info("Base system installed successfully")
+        return True, ""
 
     rc, stdout, stderr = run(
         ["basestrap", MOUNT_POINT, *unique_packages],

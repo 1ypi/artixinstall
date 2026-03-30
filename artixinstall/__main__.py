@@ -545,8 +545,9 @@ def _run_installation(screen: Screen, config: InstallerConfig) -> bool:
     steps.append({
         "label": "Installing base system",
         "func": lambda pkgs=extra_packages: install_base_system(
-            config.init_system, pkgs, config.kernel
+            config.init_system, pkgs, config.kernel, live_output=True
         ),
+        "live_output": True,
     })
 
     steps.append({
