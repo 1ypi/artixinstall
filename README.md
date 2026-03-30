@@ -2,6 +2,8 @@
 
 An interactive, menu-driven TUI installer for **Artix Linux** — the systemd-free Arch-based distribution. Inspired by `archinstall`, built specifically for Artix with full support for all four init systems and comprehensive hardware detection.
 
+<img src="https://i.imgur.com/pcjtNz9.png" width="700"/>
+
 ## Features
 
 ### Core
