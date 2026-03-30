@@ -422,6 +422,66 @@ def restore_live_package_config() -> tuple[bool, str]:
         return False, f"Failed to restore live package configuration: {e}"
 
 
+def _normalize_pacman_conf_text(content: str) -> str:
+    """Fix common live-session pacman.conf issues left by previous retries."""
+    import re
+
+    # Artix uses [lib32], not Arch's [multilib].
+    content = re.sub(r"(?m)^([ \t]*)\[multilib\]([ \t]*)$", r"\1[lib32]\2", content)
+    content = re.sub(r"(?m)^([ \t]*)#\s*\[multilib\]([ \t]*)$", r"\1#[lib32]\2", content)
+    content = re.sub(r"(?m)^([ \t]*)\[multilib-gremlins\]([ \t]*)$", r"\1[lib32-gremlins]\2", content)
+    content = re.sub(r"(?m)^([ \t]*)#\s*\[multilib-gremlins\]([ \t]*)$", r"\1#[lib32-gremlins]\2", content)
+
+    lines = content.splitlines()
+    normalized: list[str] = []
+    current_section = "options"
+
+    for line in lines:
+        stripped = line.strip()
+        if stripped.startswith("[") and stripped.endswith("]"):
+            current_section = stripped.strip("[]")
+            normalized.append(line)
+            continue
+
+        # A previous buggy run could leave mirrorlist Include/Server directives
+        # inside [options], which makes pacman parse mirrorlist as config syntax.
+        if current_section == "options":
+            if stripped.startswith("Include = /etc/pacman.d/mirrorlist"):
+                continue
+            if stripped.startswith("Server = "):
+                continue
+
+        normalized.append(line)
+
+    return "\n".join(normalized) + ("\n" if content.endswith("\n") else "")
+
+
+def normalize_live_package_config() -> tuple[bool, str]:
+    """Repair live pacman configuration so retries start from a sane state."""
+    import shutil
+
+    pacman_conf = Path("/etc/pacman.conf")
+    mirrorlist = Path("/etc/pacman.d/mirrorlist")
+    bundled_mirrorlist = Path(__file__).resolve().parents[1] / "data" / "mirrors.txt"
+
+    try:
+        if pacman_conf.is_file():
+            content = pacman_conf.read_text(encoding="utf-8")
+            normalized = _normalize_pacman_conf_text(content)
+            if normalized != content:
+                pacman_conf.write_text(normalized, encoding="utf-8")
+                log_info("Normalized live pacman.conf for Artix repositories")
+
+        if (not mirrorlist.is_file() or not mirrorlist.read_text(encoding="utf-8").strip()) and bundled_mirrorlist.is_file():
+            mirrorlist.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copy2(bundled_mirrorlist, mirrorlist)
+            log_info("Restored live mirrorlist from bundled Artix mirror list")
+
+        return True, ""
+    except OSError as e:
+        return False, f"Failed to normalize live package configuration: {e}"
+
+
 def _apply_repositories_to_path(pacman_conf: str, repos: dict) -> tuple[bool, str]:
     """Enable optional repositories in the given pacman.conf path."""
     import os
