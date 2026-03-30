@@ -15,7 +15,7 @@ from artixinstall.tui.prompts import confirm_destructive, yes_no, password_input
 
 def is_efi() -> bool:
     """Check if the system booted in EFI mode."""
-    return os.path.isdir("/sys/firmware/efi")
+    return os.path.isdir("/sys/firmware/efi") or run("sudo dmesg | grep 'EFI v'")[0]==0 or run("dmesg | grep 'EFI v'")[0]==0
 
 
 def detect_disks() -> list[dict]:
