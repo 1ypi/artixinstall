@@ -98,18 +98,33 @@ An interactive, menu-driven TUI installer for **Artix Linux** — the systemd-fr
 
 ## Usage
 
-Boot into a live Artix Linux ISO, then:
+Boot into a live Artix Linux ISO, connect to the internet, then:
+
+- Ethernet should usually work automatically via DHCP.
+- If you are using Wi-Fi, connect before starting the installer.
+- Artix documentation links:
+  https://wiki.artixlinux.org/Main/Installation
+  https://wiki.artixlinux.org/Main/InstallationOnZFS
 
 ```bash
+pacman -Sy git
+pacman -Sy python --overwrite 'x'
+
 # Clone the repository
 git clone https://github.com/1ypi/artixinstall.git
 cd artixinstall
 
-# Run the installer
 python -m artixinstall
 ```
 
 No `pip install` needed — just clone and run.
+
+No `pip install` needed - just clone and run.
+
+## Notes
+
+- NVIDIA systems are supported, but NVIDIA plus Wayland compositors such as Hyprland can still need manual post-install tuning depending on driver choice and GPU generation.
+- The installer handles Hyprland package installation, but it does not yet write NVIDIA-specific Hyprland environment/configuration automatically.
 
 ## Supported Init Systems
 

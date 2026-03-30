@@ -245,6 +245,7 @@ def show_progress(screen: Screen, steps: list[dict],
     for i, step in enumerate(steps):
         label = step["label"]
         func = step["func"]
+        live_output = step.get("live_output", False)
 
         # Draw current status
         y = y_start + i
@@ -272,7 +273,27 @@ def show_progress(screen: Screen, steps: list[dict],
 
         # Execute the step
         try:
-            success, error = func()
+            if live_output:
+                curses.endwin()
+                print(f"\n==> {label} (live output below)\n")
+                success, error = func()
+                curses.reset_prog_mode()
+                screen.stdscr.refresh()
+                curses.doupdate()
+                screen.refresh_size()
+                screen.clear()
+                screen.draw_header()
+                screen.draw_footer("Installation in progress...")
+                screen.draw_text(y_start - 1, 2, "Installing Artix Linux", COLOR_TITLE, bold=True)
+                for j, (status, rlabel, _) in enumerate(results):
+                    ry = y_start + j
+                    if ry < screen.footer_y - 1:
+                        marker = "[âœ“]" if status else "[âœ—]"
+                        color = COLOR_VALUE_SET if status else COLOR_ERROR
+                        screen.draw_text(ry, 4, f"{marker} {rlabel}", color)
+                y = y_start + i
+            else:
+                success, error = func()
         except Exception as e:
             success = False
             error = str(e)
@@ -303,7 +324,16 @@ def show_progress(screen: Screen, steps: list[dict],
                     screen.draw_footer("Installation in progress...")
                     screen.stdscr.refresh()
                     try:
-                        success, error = func()
+                        if live_output:
+                            curses.endwin()
+                            print(f"\n==> Retrying {label} (live output below)\n")
+                            success, error = func()
+                            curses.reset_prog_mode()
+                            screen.stdscr.refresh()
+                            curses.doupdate()
+                            screen.refresh_size()
+                        else:
+                            success, error = func()
                     except Exception as e:
                         success = False
                         error = str(e)
