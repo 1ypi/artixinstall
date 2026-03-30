@@ -32,7 +32,7 @@ from artixinstall.installer.init import (
 )
 from artixinstall.installer.base import (
     install_base_system, install_extra_packages,
-    generate_fstab, copy_mirrorlist, copy_pacman_conf,
+    generate_fstab, copy_mirrorlist, copy_pacman_conf, setup_mirrorlist,
 )
 from artixinstall.installer.prereqs import install_live_prerequisites, check_live_environment
 from artixinstall.installer.locale import (
@@ -83,7 +83,7 @@ class InstallerConfig:
         self.locale: str = "en_US.UTF-8"
         self.timezone: str = ""
         self.keymap: str = "us"
-        self.mirrors: str = "default"
+        self.mirrors: str = "fastest"
         self.hostname: str = "artix"
 
         # ── Users ──
@@ -324,15 +324,15 @@ def _configure_mirrors(screen: Screen, config: InstallerConfig) -> None:
     from artixinstall.tui.prompts import text_input
 
     choice = run_selection_menu(screen, "Mirror configuration", [
-        "Use default mirrors",
+        "Use fastest mirrors (recommended)",
         "Copy from live environment",
         "Enter custom mirror URL",
     ])
     if choice is None:
         return
 
-    if choice.startswith("Use default"):
-        config.mirrors = "default"
+    if choice.startswith("Use fastest"):
+        config.mirrors = "fastest"
     elif choice.startswith("Copy from"):
         config.mirrors = "live"
     elif choice.startswith("Enter custom"):
@@ -495,7 +495,7 @@ def _run_installation(screen: Screen, config: InstallerConfig) -> bool:
     services_to_enable.extend(profile_services)
 
     # Custom mirror setup
-    if config.mirrors not in ("default", "live") and config.disk:
+    if config.mirrors not in ("fastest", "default", "live") and config.disk:
         _write_custom_mirrors(config)
 
     # ══════════════════════════════════════
@@ -538,7 +538,7 @@ def _run_installation(screen: Screen, config: InstallerConfig) -> bool:
     # Copy mirrors before basestrap
     steps.append({
         "label": "Setting up mirrors",
-        "func": lambda: copy_mirrorlist(),
+        "func": lambda: setup_mirrorlist(config.mirrors),
     })
 
     # Base system installation (the big one)
