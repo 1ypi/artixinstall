@@ -38,6 +38,12 @@ INIT_SYSTEMS = {
 # Cache for loaded services data
 _services_data: dict | None = None
 
+SERVICE_ENABLE_ALIASES = {
+    "bluetoothd": {"openrc": ["bluetooth"]},
+    "cups": {"openrc": ["cupsd"]},
+    "alsa": {"openrc": ["alsasound"]},
+}
+
 
 def _get_data_dir() -> Path:
     """Get the path to the data directory."""
@@ -129,6 +135,16 @@ def enable_service(service_name: str, init_system: str) -> tuple[bool, str]:
 
     rc, stdout, stderr = run(cmd, chroot=True)
     if rc != 0:
+        aliases = SERVICE_ENABLE_ALIASES.get(service_name, {}).get(init_system, [])
+        if init_system == "openrc" and cmd.startswith("rc-update add "):
+            for alias in aliases:
+                alias_cmd = f"rc-update add {alias} default"
+                rc_alias, _, stderr_alias = run(alias_cmd, chroot=True)
+                if rc_alias == 0:
+                    log_info(f"Enabled service {service_name} via alias {alias} ({init_system})")
+                    return True, ""
+                stderr = stderr_alias or stderr
+
         return False, f"Failed to enable {service_name}: {stderr}"
 
     log_info(f"Enabled service {service_name} ({init_system})")
