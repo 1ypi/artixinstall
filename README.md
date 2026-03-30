@@ -117,9 +117,7 @@ cd artixinstall
 python -m artixinstall
 ```
 
-No `pip install` needed — just clone and run.
-
-No `pip install` needed - just clone and run.
+No `pip install` needed, just clone and run.
 
 ## Notes
 
