@@ -6,6 +6,7 @@ from artixinstall.utils.shell import command_exists, run
 from artixinstall.utils.log import log_info
 from artixinstall.installer.packages import (
     backup_live_package_config,
+    normalize_live_package_config,
     restore_live_package_config,
 )
 
@@ -73,6 +74,10 @@ def install_live_prerequisites(disk_config: dict | None) -> tuple[bool, str]:
         return False, message
 
     ok, message = restore_live_package_config()
+    if not ok:
+        return False, message
+
+    ok, message = normalize_live_package_config()
     if not ok:
         return False, message
 
