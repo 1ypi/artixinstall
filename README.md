@@ -43,7 +43,7 @@ An interactive, menu-driven TUI installer for **Artix Linux** — the systemd-fr
 - **Categorized package browser** — 40+ packages across 8 categories  
   (browsers, multimedia, office, dev tools, system tools, networking, fonts, gaming)
 - **Custom package entry** — type any package name to add it
-- **Optional repositories** — multilib and universe toggles
+- **Optional repositories** — lib32 and universe toggles
 
 ### Safety
 - **Destructive operations require explicit "yes"** — not just Enter
