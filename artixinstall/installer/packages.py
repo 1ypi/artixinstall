@@ -390,6 +390,7 @@ def get_profile_label(profile: str) -> str:
 def _apply_repositories_to_path(pacman_conf: str, repos: dict) -> tuple[bool, str]:
     """Enable optional repositories in the given pacman.conf path."""
     import os
+    import re
 
     if not os.path.isfile(pacman_conf):
         return True, ""
@@ -399,10 +400,24 @@ def _apply_repositories_to_path(pacman_conf: str, repos: dict) -> tuple[bool, st
             content = f.read()
 
         if repos.get("multilib"):
-            content = content.replace(
-                "#[multilib]\n#Include = /etc/pacman.d/mirrorlist",
-                "[multilib]\nInclude = /etc/pacman.d/mirrorlist",
+            original = content
+            content = re.sub(
+                r"(?m)^[ \t]*#\s*\[multilib\][ \t]*$",
+                "[multilib]",
+                content,
             )
+            content = re.sub(
+                r"(?m)^[ \t]*#\s*Include\s*=\s*/etc/pacman\.d/mirrorlist[ \t]*$",
+                "Include = /etc/pacman.d/mirrorlist",
+                content,
+                count=1,
+            )
+
+            if "[multilib]" not in content:
+                content += "\n[multilib]\nInclude = /etc/pacman.d/mirrorlist\n"
+
+            if content == original:
+                log_info(f"multilib repository already appeared enabled in {pacman_conf}")
 
         if repos.get("universe") and "[universe]" not in content:
             content += "\n[universe]\nServer = https://universe.artixlinux.org/$arch\n"
