@@ -209,8 +209,8 @@ def _automatic_partition(screen: Screen, disk_path: str, efi: bool) -> dict | No
     else:
         part_prefix = disk_path
 
-    boot_end = 513
-    swap_end = boot_end + swap_size_mb if use_swap else boot_end
+    #boot_end = 513
+    #swap_end = boot_end + swap_size_mb if use_swap else boot_end
 
     config = {
         "disk": disk_path,
