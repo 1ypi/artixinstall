@@ -28,8 +28,17 @@ def load_locale_list() -> list[str]:
         with open(locale_file, "r") as f:
             return [line.strip() for line in f if line.strip()]
     except FileNotFoundError:
-        log_error("locales.txt not found, using defaults")
-        return ["en_US.UTF-8", "en_GB.UTF-8", "de_DE.UTF-8"]
+        try:
+            with open("/usr/share/i18n/SUPPORTED", "r") as f:
+                log_error("locales.txt not found, extracting from supported locales file")
+                lines = f.read().splitlines()
+                content = []
+                for line in lines:
+                    content.append(line.split(" ")[0])
+                return content
+        except FileNotFoundError:
+            log_error("locales.txt and supported locales file not found, using defaults")
+            return ["en_US.UTF-8", "en_GB.UTF-8", "de_DE.UTF-8", "es_ES.UTF-8"]
 
 
 def configure_locale(screen: Screen) -> str | None:
