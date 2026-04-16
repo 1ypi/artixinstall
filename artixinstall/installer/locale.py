@@ -5,12 +5,16 @@ Handles setting the system locale, timezone, keyboard layout, and hardware
 clock inside the chroot.
 """
 
+import curses
 import os
 from pathlib import Path
 
 from artixinstall.utils.shell import run, MOUNT_POINT
 from artixinstall.utils.log import log_info, log_error
-from artixinstall.tui.screen import Screen
+from artixinstall.tui.screen import (
+    Screen, COLOR_NORMAL, COLOR_SELECTED, COLOR_SEPARATOR, COLOR_TITLE,
+    COLOR_VALUE_SET, COLOR_VALUE_UNSET,
+)
 from artixinstall.tui.menu import run_selection_menu, run_menu, MenuItem
 from artixinstall.tui.prompts import text_input
 from artixinstall.utils.validate import is_valid_locale
@@ -21,6 +25,91 @@ def _get_data_dir() -> Path:
     return Path(__file__).parent.parent / "data"
 
 
+def _search_locales(screen: Screen, all_locales: list[str]) -> str | None:
+    query = ""
+    filtered = list(all_locales)
+    selected_idx = 0
+    scroll_offset = 0
+
+    while True:
+        screen.refresh_size()
+        screen.clear()
+        screen.draw_header()
+        footer = "↑↓ Navigate  Enter Select  / Search  c Clear  C Custom  ESC Back"
+        screen.draw_footer(footer)
+
+        screen.draw_text(screen.content_y, 2, "Select Locale", COLOR_TITLE, bold=True)
+        query_text = query if query else "(all locales)"
+        screen.draw_text(screen.content_y + 1, 2, f"Filter: {query_text}", COLOR_VALUE_SET if query else COLOR_VALUE_UNSET)
+        screen.draw_text(screen.content_y + 2, 2, f"Available: {len(all_locales)}  Showing: {len(filtered)}", COLOR_SEPARATOR)
+
+        list_start_y = screen.content_y + 4
+        visible_count = max(1, screen.content_height - 5)
+
+        if selected_idx >= len(filtered):
+            selected_idx = max(0, len(filtered) - 1)
+
+        if selected_idx < scroll_offset:
+            scroll_offset = selected_idx
+        elif selected_idx >= scroll_offset + visible_count:
+            scroll_offset = selected_idx - visible_count + 1
+
+        if not filtered:
+            screen.draw_text(list_start_y, 4, "No locales match the current filter.", COLOR_VALUE_UNSET)
+        else:
+            for draw_idx in range(visible_count):
+                locale_idx = scroll_offset + draw_idx
+                if locale_idx >= len(filtered):
+                    break
+                locale = filtered[locale_idx]
+                y = list_start_y + draw_idx
+                label = f"  {locale}"
+                if locale_idx == selected_idx:
+                    screen.draw_text(y, 1, label.ljust(screen.width - 2)[:screen.width - 2], COLOR_SELECTED)
+                else:
+                    screen.draw_text(y, 4, label, COLOR_NORMAL)
+
+        screen.stdscr.refresh()
+        key = screen.get_input()
+
+        if key == curses.KEY_RESIZE:
+            continue
+        if key in (27, ord('q'), ord('Q')):
+            return None
+        if key in (curses.KEY_UP, ord('k')) and filtered:
+            selected_idx = max(0, selected_idx - 1)
+        elif key in (curses.KEY_DOWN, ord('j')) and filtered:
+            selected_idx = min(len(filtered) - 1, selected_idx + 1)
+        elif key == curses.KEY_HOME and filtered:
+            selected_idx = 0
+        elif key == curses.KEY_END and filtered:
+            selected_idx = len(filtered) - 1
+        elif key in (curses.KEY_ENTER, ord('\n'), ord('\r')) and filtered:
+            return filtered[selected_idx]
+        elif key == ord('/'):
+            result = text_input(screen, "Search locales:", default=query)
+            if result is None:
+                continue
+            query = result.strip().lower()
+            filtered = [loc for loc in all_locales if query in loc.lower()] if query else list(all_locales)
+            selected_idx = 0
+            scroll_offset = 0
+        elif key in (ord('c'), ord('C')):
+            if key == ord('C'):
+                # Capital C: custom input
+                custom = text_input(screen, "Enter locale (e.g. en_US.UTF-8):",
+                                  default="en_US.UTF-8",
+                                  validator=is_valid_locale)
+                if custom is not None:
+                    return custom
+            else:
+                # Lowercase c: clear filter
+                query = ""
+                filtered = list(all_locales)
+                selected_idx = 0
+                scroll_offset = 0
+
+
 def load_locale_list() -> list[str]:
     """Load the curated list of common locales from data/locales.txt."""
     locale_file = _get_data_dir() / "locales.txt"
@@ -28,28 +117,22 @@ def load_locale_list() -> list[str]:
         with open(locale_file, "r") as f:
             return [line.strip() for line in f if line.strip()]
     except FileNotFoundError:
-        log_error("locales.txt not found, using defaults")
-        return ["en_US.UTF-8", "en_GB.UTF-8", "de_DE.UTF-8"]
+        try:
+            with open("/usr/share/i18n/SUPPORTED", "r") as f:
+                log_error("locales.txt not found, extracting from supported locales file")
+                lines = f.read().splitlines()
+                content = []
+                for line in lines:
+                    content.append(line.split(" ")[0])
+                return content
+        except FileNotFoundError:
+            log_error("locales.txt and supported locales file not found, using defaults")
+            return ["en_US.UTF-8", "en_GB.UTF-8", "de_DE.UTF-8", "es_ES.UTF-8"]
 
 
 def configure_locale(screen: Screen) -> str | None:
-    """
-    Interactive locale selection.
-
-    Returns the selected locale string (e.g. "en_US.UTF-8"), or None if cancelled.
-    """
     locales = load_locale_list()
-    locales.append("Custom (enter manually)")
-
-    selected = run_selection_menu(screen, "Select locale", locales)
-    if selected is None:
-        return None
-
-    if selected.startswith("Custom"):
-        return text_input(screen, "Enter locale (e.g. en_US.UTF-8):",
-                          default="en_US.UTF-8",
-                          validator=is_valid_locale)
-    return selected
+    return _search_locales(screen, locales)
 
 
 def configure_timezone(screen: Screen) -> str | None:

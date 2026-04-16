@@ -51,7 +51,7 @@
     "openrc":  { "package": "pipewire",  "enable": "echo 'pipewire runs as a user service'" },
     "runit":   { "package": "pipewire",  "enable": "echo 'pipewire runs as a user service'" },
     "s6":      { "package": "pipewire",  "enable": "echo 'pipewire runs as a user service'" },
-    "dinit":   { "package": "pipewire",  "enable": "echo 'pipewire runs as a user service'" }
+    "dinit":   { "package": "pipewire",  "enable": "echo 'pipewire runs as a user service'" } 
   },
   "lightdm": {
     "openrc":  { "package": "lightdm-openrc",  "enable": "rc-update add lightdm default" },

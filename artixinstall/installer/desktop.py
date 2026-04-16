@@ -142,6 +142,22 @@ DISPLAY_MANAGER_RECOMMENDATIONS = {
             "lightdm-slick": "Sway can work with LightDM, but Ly/TTY are usually safer choices.",
         },
     },
+    "mangowm": {
+        "recommended": "ly",
+        "warnings": {
+            "gdm": "MangoWM is usually started from Ly or directly from TTY. GDM is not the safest default.",
+            "lightdm-gtk": "MangoWM can work with LightDM, but Ly/TTY are usually safer choices.",
+            "lightdm-slick": "MangoWM can work with LightDM, but Ly/TTY are usually safer choices.",
+        },
+    },
+    "niri": {
+        "recommended": "ly",
+        "warnings": {
+            "gdm": "Niri is usually started from Ly or directly from TTY. GDM is not the safest default.",
+            "lightdm-gtk": "Niri can work with LightDM, but Ly/TTY are usually safer choices.",
+            "lightdm-slick": "Niri can work with LightDM, but Ly/TTY are usually safer choices.",
+        },
+    },
 }
 
 # ── Desktop environment definitions ──
@@ -407,7 +423,7 @@ DESKTOP_ENVIRONMENTS = {
         ],
         "display_manager": None,
         "services": [],
-    },
+    }
 }
 
 

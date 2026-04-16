@@ -140,7 +140,8 @@ def enable_service(service_name: str, init_system: str) -> tuple[bool, str]:
         script_exists = False
         for candidate in candidates:
             rc_check, _, _ = run(["test", "-f", f"/etc/init.d/{candidate}"], chroot=True)
-            if rc_check == 0:
+            rc_check2, _, _ = run(["rc-service", f"{candidate}", "status"], chroot=True)
+            if rc_check == 0 or rc_check2 == 0:
                 service_script = candidate
                 script_exists = True
                 break

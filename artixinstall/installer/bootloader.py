@@ -53,6 +53,27 @@ def configure_bootloader(screen: Screen) -> str | None:
     return keys[idx]
 
 
+def configure_grub_custom_params(screen: Screen) -> str:
+    """
+    Prompt user for custom GRUB install parameters.
+
+    Returns custom parameters string, or empty string if user declines/cancels.
+    """
+    from artixinstall.tui.prompts import yes_no, text_input
+
+    if not yes_no(screen,
+            "Set custom GRUB install parameters?\n"
+            "Only choose yes if you know what you're doing.",
+            default=False):
+        return ""
+
+    params = text_input(screen,
+        "Enter custom GRUB install parameters:\n"
+        "(e.g., --target=x86_64-efi-signed)",
+        default="")
+    return params.strip() if params else ""
+
+
 def get_bootloader_packages(bootloader: str, efi: bool) -> list[str]:
     """Get the packages needed for the selected bootloader."""
     info = BOOTLOADERS.get(bootloader, {})
@@ -62,7 +83,7 @@ def get_bootloader_packages(bootloader: str, efi: bool) -> list[str]:
 
 
 def apply_bootloader(bootloader: str, disk_config: dict,
-                     kernel: str = "linux") -> tuple[bool, str]:
+                     kernel: str = "linux", grub_params: str = "") -> tuple[bool, str]:
     """
     Install and configure the selected bootloader inside the chroot.
 
@@ -74,6 +95,8 @@ def apply_bootloader(bootloader: str, disk_config: dict,
         The disk configuration dict from disk.configure_disk()
     kernel : str
         The kernel package name (e.g. "linux", "linux-lts")
+    grub_params : str
+        Custom GRUB install parameters (only used for GRUB)
 
     Returns
     -------
@@ -85,7 +108,7 @@ def apply_bootloader(bootloader: str, disk_config: dict,
     encrypt = disk_config.get("encrypt", False)
 
     if bootloader == "grub":
-        return _install_grub(efi, disk, disk_config, kernel)
+        return _install_grub(efi, disk, disk_config, kernel, grub_params)
     elif bootloader == "systemd-boot":
         if not efi:
             return False, "systemd-boot requires UEFI firmware"
@@ -95,8 +118,8 @@ def apply_bootloader(bootloader: str, disk_config: dict,
 
 
 def _install_grub(efi: bool, disk: str, disk_config: dict,
-                  kernel: str) -> tuple[bool, str]:
-    """Install and configure GRUB, with LUKS support."""
+                  kernel: str, grub_params: str = "") -> tuple[bool, str]:
+    """Install and configure GRUB, with LUKS and custom parameters support."""
     encrypt = disk_config.get("encrypt", False)
 
     # If encrypted, configure GRUB for LUKS
@@ -147,20 +170,20 @@ def _install_grub(efi: bool, disk: str, disk_config: dict,
 
     if efi:
         # UEFI GRUB installation
-        rc, _, stderr = run(
-            "grub-install --target=x86_64-efi --efi-directory=/boot --bootloader-id=artix",
-            chroot=True,
-        )
+        grub_cmd = "grub-install --target=x86_64-efi --efi-directory=/boot --bootloader-id=artix"
+        if grub_params:
+            grub_cmd = f"grub-install {grub_params} --target=x86_64-efi --efi-directory=/boot --bootloader-id=artix"
+        rc, _, stderr = run(grub_cmd, chroot=True)
         if rc != 0:
             return False, f"grub-install (EFI) failed: {stderr}"
     else:
         # BIOS GRUB installation
         if not disk:
             return False, "Disk path required for BIOS GRUB installation"
-        rc, _, stderr = run(
-            f"grub-install --target=i386-pc {disk}",
-            chroot=True,
-        )
+        grub_cmd = f"grub-install --target=i386-pc {disk}"
+        if grub_params:
+            grub_cmd = f"grub-install {grub_params} --target=i386-pc {disk}"
+        rc, _, stderr = run(grub_cmd, chroot=True)
         if rc != 0:
             return False, f"grub-install (BIOS) failed: {stderr}"
 
