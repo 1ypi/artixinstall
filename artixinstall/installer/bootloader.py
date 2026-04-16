@@ -59,12 +59,12 @@ def configure_grub_custom_params(screen: Screen) -> str:
 
     Returns custom parameters string, or empty string if user declines/cancels.
     """
-    from artixinstall.tui.prompts import confirm, text_input
+    from artixinstall.tui.prompts import yes_no, text_input
 
-    if not confirm(screen,
+    if not yes_no(screen,
             "Set custom GRUB install parameters?\n"
             "Only choose yes if you know what you're doing.",
-            default_yes=False):
+            default=False):
         return ""
 
     params = text_input(screen,
