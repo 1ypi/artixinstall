@@ -441,15 +441,17 @@ DESKTOP_ENVIRONMENTS = {
     },
 
     "niri": {
-        "label": "Niri (Wayland scrollable tiling)",
+        "label": "Niri (Wayland scrollable tiling – AUR only)",
         "category": "wm",
         "packages": [
-            "niri",
+            # Niri itself must be installed from AUR (niri-git).
+            # Only companion packages from the official repos are listed here.
             "waybar", "fuzzel", "dunst",
             "foot", "thunar", "grim", "slurp", "wl-clipboard",
             "polkit-gnome", "xdg-desktop-portal-gnome",
             *_WAYLAND_BASE, *_COMMON_UTILS,
         ],
+        "aur_packages": ["niri-git"],
         "display_manager": None,
         "services": [],
     },

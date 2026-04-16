@@ -466,9 +466,8 @@ def install_aur_packages(aur_packages: list[str],
                          username: str) -> tuple[bool, str]:
     """Install packages from the AUR inside the chroot.
 
-    Uses ``makepkg`` running as *username* (``makepkg`` refuses to run as
-    root).  ``git`` and ``base-devel`` must already be installed in the
-    target — they are part of the default base package set.
+    Installs ``git`` and ``base-devel`` if needed, then uses ``makepkg``
+    running as *username* (``makepkg`` refuses to run as root).
 
     Parameters
     ----------
@@ -484,6 +483,15 @@ def install_aur_packages(aur_packages: list[str],
     """
     if not aur_packages:
         return True, ""
+
+    # Ensure git and base-devel are installed (not guaranteed in base image)
+    rc, _, stderr = run(
+        ["pacman", "-S", "--noconfirm", "--needed", "git", "base-devel"],
+        chroot=True,
+        timeout=600,
+    )
+    if rc != 0:
+        return False, f"Failed to install AUR build dependencies (git, base-devel): {stderr}"
 
     build_dir = f"/home/{username}/.cache/aur-build"
 
