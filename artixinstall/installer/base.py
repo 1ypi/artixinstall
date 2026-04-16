@@ -495,10 +495,12 @@ def install_aur_packages(aur_packages: list[str],
         return False, f"Failed to install AUR build dependencies: {stderr}"
 
     build_dir = f"/home/{username}/.cache/aur-build"
+    cache_dir = f"/home/{username}/.cache"
 
-    # Create build directory owned by user
+    # Create build directory and Go cache, all owned by the user
     rc, _, stderr = run(
-        f"mkdir -p {build_dir} && chown {username}:{username} {build_dir}",
+        f"mkdir -p {build_dir} {cache_dir}/go-build "
+        f"&& chown -R {username}:{username} {cache_dir}",
         chroot=True,
     )
     if rc != 0:
