@@ -142,6 +142,22 @@ DISPLAY_MANAGER_RECOMMENDATIONS = {
             "lightdm-slick": "Sway can work with LightDM, but Ly/TTY are usually safer choices.",
         },
     },
+    "mangowm": {
+        "recommended": "ly",
+        "warnings": {
+            "gdm": "MangoWM is usually started from Ly or directly from TTY. GDM is not the safest default.",
+            "lightdm-gtk": "MangoWM can work with LightDM, but Ly/TTY are usually safer choices.",
+            "lightdm-slick": "MangoWM can work with LightDM, but Ly/TTY are usually safer choices.",
+        },
+    },
+    "niri": {
+        "recommended": "ly",
+        "warnings": {
+            "gdm": "Niri is usually started from Ly or directly from TTY. GDM is not the safest default.",
+            "lightdm-gtk": "Niri can work with LightDM, but Ly/TTY are usually safer choices.",
+            "lightdm-slick": "Niri can work with LightDM, but Ly/TTY are usually safer choices.",
+        },
+    },
 }
 
 # ── Desktop environment definitions ──
@@ -407,6 +423,36 @@ DESKTOP_ENVIRONMENTS = {
         ],
         "display_manager": None,
         "services": [],
+    },
+
+    "mangowm": {
+        "label": "MangoWM (Wayland adaptive tiling – AUR)",
+        "category": "wm",
+        "packages": [
+            "mangowm",
+            "waybar", "wofi", "dunst",
+            "foot", "thunar", "grim", "slurp", "wl-clipboard",
+            "polkit-gnome", "xdg-desktop-portal-wlr",
+            *_WAYLAND_BASE, *_PIPEWIRE, *_COMMON_UTILS,
+        ],
+        "display_manager": None,
+        "services": [],
+        "requires_aur": True,
+    },
+
+    "niri": {
+        "label": "Niri (Wayland tiling – layout & stacking – AUR)",
+        "category": "wm",
+        "packages": [
+            "niri",
+            "waybar", "wofi", "dunst",
+            "foot", "thunar", "grim", "slurp", "wl-clipboard",
+            "polkit-gnome", "xdg-desktop-portal-wlr",
+            *_WAYLAND_BASE, *_PIPEWIRE, *_COMMON_UTILS,
+        ],
+        "display_manager": None,
+        "services": [],
+        "requires_aur": True,
     },
 }
 

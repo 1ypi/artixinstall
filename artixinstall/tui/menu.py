@@ -46,7 +46,7 @@ class MenuItem:
 
 def run_menu(screen: Screen, title: str, items: list[MenuItem],
              footer: str = "↑↓ Navigate  Enter Select  ESC Back",
-             allow_escape: bool = True) -> MenuItem | None:
+             allow_escape: bool = True, default_key: str = "") -> MenuItem | None:
     """
     Display a vertical selection menu and return the chosen MenuItem.
 
@@ -63,6 +63,9 @@ def run_menu(screen: Screen, title: str, items: list[MenuItem],
     allow_escape : bool
         If True, ESC/Q returns None. If False, ESC is ignored
         (used for the main menu to prevent accidental exit).
+    default_key : str
+        Optional: key of the item to start selection at. If not found,
+        starts at the first selectable item.
 
     Returns
     -------
@@ -74,7 +77,14 @@ def run_menu(screen: Screen, title: str, items: list[MenuItem],
     if not selectable:
         return None
 
+    # Try to start at the specified key, otherwise start at first
     selected_idx = selectable[0]
+    if default_key:
+        for idx in selectable:
+            if items[idx].key == default_key:
+                selected_idx = idx
+                break
+
     scroll_offset = 0
 
     while True:

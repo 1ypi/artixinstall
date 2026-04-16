@@ -65,7 +65,27 @@ AUDIO_SERVERS = {
 
 PIPEWIRE_INIT_PACKAGES = {
     "openrc": ["pipewire-openrc", "pipewire-pulse-openrc", "wireplumber-openrc"],
+    "runit": ["pipewire-runit", "pipewire-pulse-runit", "wireplumber-runit"],
+    "s6": ["pipewire-s6", "pipewire-pulse-s6", "wireplumber-s6"],
     "dinit": ["pipewire-dinit", "pipewire-pulse-dinit", "wireplumber-dinit"],
+}
+
+
+# ── AUR helper options ──
+
+AUR_HELPERS = {
+    "none": {
+        "label": "None (no AUR support)",
+        "packages": [],
+    },
+    "yay": {
+        "label": "Yay (Rust-based, fast)",
+        "packages": ["yay"],
+    },
+    "paru": {
+        "label": "Paru (Rust-based, feature-rich)",
+        "packages": ["paru"],
+    },
 }
 
 
@@ -217,6 +237,23 @@ def configure_audio(screen: Screen) -> str | None:
     keys = list(AUDIO_SERVERS.keys())
 
     selected = run_selection_menu(screen, "Select audio server", options)
+    if selected is None:
+        return None
+
+    idx = options.index(selected)
+    return keys[idx]
+
+
+def configure_aur_helper(screen: Screen) -> str | None:
+    """
+    Interactive AUR helper selection.
+
+    Returns the helper key ("yay", "paru", "none"), or None if cancelled.
+    """
+    options = [info["label"] for info in AUR_HELPERS.values()]
+    keys = list(AUR_HELPERS.keys())
+
+    selected = run_selection_menu(screen, "Select AUR helper (needed for AUR packages)", options)
     if selected is None:
         return None
 
@@ -469,7 +506,7 @@ def configure_repositories(screen: Screen) -> dict | None:
 
     result = yes_no(screen,
                     "Enable universe repository?\n"
-                    "(Community-maintained Artix packages)",
+                    "(Community-maintained packages)",
                     default=False)
     if result is None:
         return None
@@ -502,6 +539,18 @@ def get_audio_label(audio: str) -> str:
     """Get the display label for an audio server."""
     info = AUDIO_SERVERS.get(audio, {})
     return info.get("label", audio)
+
+
+def get_aur_helper_packages(aur_helper: str) -> list[str]:
+    """Get the package list for an AUR helper choice."""
+    info = AUR_HELPERS.get(aur_helper, AUR_HELPERS["none"])
+    return list(info.get("packages", []))
+
+
+def get_aur_helper_label(aur_helper: str) -> str:
+    """Get the display label for an AUR helper."""
+    info = AUR_HELPERS.get(aur_helper, {})
+    return info.get("label", aur_helper)
 
 
 def get_kernel_label(kernel: str) -> str:

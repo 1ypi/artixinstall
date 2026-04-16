@@ -48,10 +48,10 @@
     "dinit":   { "package": "alsa-utils-dinit",    "enable": "dinitctl enable alsa" }
   },
   "pipewire": {
-    "openrc":  { "package": "pipewire",  "enable": "echo 'pipewire runs as a user service'" },
-    "runit":   { "package": "pipewire",  "enable": "echo 'pipewire runs as a user service'" },
-    "s6":      { "package": "pipewire",  "enable": "echo 'pipewire runs as a user service'" },
-    "dinit":   { "package": "pipewire",  "enable": "echo 'pipewire runs as a user service'" }
+    "openrc":  { "package": "pipewire-openrc",  "enable": "rc-update add pipewire default" },
+    "runit":   { "package": "pipewire-runit",   "enable": "ln -s /etc/runit/sv/pipewire /etc/runit/runsvdir/default/" },
+    "s6":      { "package": "pipewire-s6",      "enable": "s6-rc-bundle-update add default pipewire" },
+    "dinit":   { "package": "pipewire-dinit",    "enable": "dinitctl enable pipewire" }
   },
   "lightdm": {
     "openrc":  { "package": "lightdm-openrc",  "enable": "rc-update add lightdm default" },
