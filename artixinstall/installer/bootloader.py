@@ -1,8 +1,13 @@
 """
-artixinstall.installer.bootloader — GRUB and systemd-boot (via elogind) setup.
+artixinstall.installer.bootloader — GRUB and systemd-boot (via egummiboot) setup.
 
 Handles detecting firmware type (EFI vs BIOS), installing and configuring
 the selected bootloader inside the chroot, including LUKS encryption support.
+
+Note: On Artix Linux, `bootctl` (part of `systemd`) is NOT available.
+systemd-boot is supported via the `egummiboot` package, which provides
+the EFI boot stub.  If egummiboot is unavailable the installer falls back
+to copying the EFI binary manually and registering via `efibootmgr`.
 """
 
 import os
@@ -22,9 +27,14 @@ BOOTLOADERS = {
         "packages_bios": ["grub", "os-prober"],
     },
     "systemd-boot": {
-        "label": "systemd-boot (via elogind, EFI only)",
-        "packages_efi": ["efibootmgr"],
+        "label": "systemd-boot (EFI only, uses egummiboot)",
+        "packages_efi": ["egummiboot", "efibootmgr"],
         "packages_bios": [],  # systemd-boot doesn't support BIOS
+    },
+    "refind": {
+        "label": "rEFInd (EFI only, graphical boot manager)",
+        "packages_efi": ["refind", "efibootmgr"],
+        "packages_bios": [],  # rEFInd doesn't support BIOS
     },
 }
 
@@ -33,7 +43,8 @@ def configure_bootloader(screen: Screen) -> str | None:
     """
     Interactive bootloader selection.
 
-    Returns the bootloader key ("grub" or "systemd-boot"), or None if cancelled.
+    Returns the bootloader key ("grub", "systemd-boot", or "refind"),
+    or None if cancelled.
     """
     efi = is_efi()
 
@@ -90,7 +101,7 @@ def apply_bootloader(bootloader: str, disk_config: dict,
     Parameters
     ----------
     bootloader : str
-        "grub" or "systemd-boot"
+        "grub", "systemd-boot", or "refind"
     disk_config : dict
         The disk configuration dict from disk.configure_disk()
     kernel : str
@@ -113,6 +124,10 @@ def apply_bootloader(bootloader: str, disk_config: dict,
         if not efi:
             return False, "systemd-boot requires UEFI firmware"
         return _install_systemd_boot(disk_config, kernel)
+    elif bootloader == "refind":
+        if not efi:
+            return False, "rEFInd requires UEFI firmware"
+        return _install_refind(disk_config, kernel)
     else:
         return False, f"Unknown bootloader: {bootloader}"
 
@@ -200,21 +215,26 @@ def _install_grub(efi: bool, disk: str, disk_config: dict,
 
 
 def _install_systemd_boot(disk_config: dict, kernel: str) -> tuple[bool, str]:
-    """Install and configure systemd-boot (bootctl), with LUKS support."""
+    """Install and configure systemd-boot manually, with LUKS support.
+
+    On Artix Linux, ``bootctl`` is NOT available because it is part of
+    the ``systemd`` package which Artix intentionally avoids.  Instead
+    we rely on the ``egummiboot`` package (which provides the same EFI
+    boot stub) and fall back to a fully manual installation when
+    ``bootctl`` is not present.
+    """
     encrypt = disk_config.get("encrypt", False)
 
-    # Install bootctl
-    rc, _, stderr = run(
-        "bootctl --path=/boot install",
-        chroot=True,
-    )
+    # ── Step 1: Try bootctl (from gummiboot), fall back to manual ──
+    rc, _, stderr = run("bootctl --path=/boot install", chroot=True)
     if rc != 0:
-        return False, f"bootctl install failed: {stderr}"
+        log_info("bootctl unavailable or failed, performing manual EFI stub install")
+        ok, err = _manual_systemd_boot_install()
+        if not ok:
+            return False, err
 
-    # Get root partition UUID
+    # ── Step 2: Determine root partition parameters ──
     if encrypt:
-        # For encrypted setups, we need the LUKS partition UUID and
-        # the decrypted device UUID
         luks_part = disk_config.get("root_part", "")
         rc, luks_uuid, _ = run(f"blkid -s UUID -o value {luks_part}")
         if rc != 0 or not luks_uuid.strip():
@@ -300,4 +320,93 @@ def _install_systemd_boot(disk_config: dict, kernel: str) -> tuple[bool, str]:
         return False, f"Failed to write fallback boot entry: {e}"
 
     log_info("systemd-boot installed and configured")
+    return True, ""
+
+
+def _manual_systemd_boot_install() -> tuple[bool, str]:
+    """Manually install the systemd-boot EFI stub without using bootctl.
+
+    Copies the EFI binary to the ESP and sets up the directory structure.
+    This is the fallback when ``bootctl`` is not available on Artix.
+    """
+    import shutil
+
+    esp_path = os.path.join(MOUNT_POINT, "boot")
+
+    # Look for the EFI stub in common locations
+    stub_candidates = [
+        os.path.join(MOUNT_POINT, "usr", "lib", "egummiboot", "egummibootx64.efi"),
+        os.path.join(MOUNT_POINT, "usr", "lib", "gummiboot", "gummibootx64.efi"),
+        os.path.join(MOUNT_POINT, "usr", "lib", "systemd", "boot", "efi", "systemd-bootx64.efi"),
+        "/usr/lib/egummiboot/egummibootx64.efi",
+        "/usr/lib/gummiboot/gummibootx64.efi",
+        "/usr/lib/systemd/boot/efi/systemd-bootx64.efi",
+    ]
+
+    efi_dest_dir = os.path.join(esp_path, "EFI", "systemd")
+    efi_boot_dir = os.path.join(esp_path, "EFI", "BOOT")
+    os.makedirs(efi_dest_dir, exist_ok=True)
+    os.makedirs(efi_boot_dir, exist_ok=True)
+
+    stub_found = False
+    for candidate in stub_candidates:
+        if os.path.isfile(candidate):
+            try:
+                shutil.copy2(candidate, os.path.join(efi_dest_dir, "systemd-bootx64.efi"))
+                shutil.copy2(candidate, os.path.join(efi_boot_dir, "BOOTX64.EFI"))
+                stub_found = True
+                log_info(f"Copied EFI boot stub from {candidate}")
+                break
+            except OSError as e:
+                log_error(f"Failed to copy EFI stub from {candidate}: {e}")
+
+    if not stub_found:
+        return False, (
+            "Could not find a systemd-boot or egummiboot EFI stub.\n"
+            "systemd-boot requires the 'egummiboot' package on Artix Linux.\n"
+            "Consider using GRUB or rEFInd instead."
+        )
+
+    return True, ""
+
+
+def _install_refind(disk_config: dict, kernel: str) -> tuple[bool, str]:
+    """Install and configure rEFInd boot manager."""
+    # Run refind-install inside chroot
+    rc, _, stderr = run("refind-install", chroot=True)
+    if rc != 0:
+        return False, f"refind-install failed: {stderr}"
+
+    # rEFInd auto-detects kernels, but we can write a manual stanza
+    # for reliability, especially with encryption
+    encrypt = disk_config.get("encrypt", False)
+
+    if encrypt:
+        root_part = disk_config.get("root_part", "")
+        rc, uuid_out, _ = run(f"blkid -s UUID -o value {root_part}")
+        root_uuid = uuid_out.strip() if rc == 0 else ""
+
+        if root_uuid:
+            refind_conf = os.path.join(MOUNT_POINT, "boot", "EFI", "refind", "refind.conf")
+            if os.path.isfile(refind_conf):
+                try:
+                    with open(refind_conf, "a") as f:
+                        if kernel == "linux":
+                            vmlinuz = "vmlinuz-linux"
+                            initrd = "initramfs-linux.img"
+                        else:
+                            vmlinuz = f"vmlinuz-{kernel}"
+                            initrd = f"initramfs-{kernel}.img"
+
+                        f.write(f"\n# Artix Linux (encrypted)\n")
+                        f.write(f'menuentry "Artix Linux" {{\n')
+                        f.write(f'    volume  "Artix Linux"\n')
+                        f.write(f"    loader  /{vmlinuz}\n")
+                        f.write(f"    initrd  /{initrd}\n")
+                        f.write(f'    options "cryptdevice=UUID={root_uuid}:cryptroot root=/dev/mapper/cryptroot rw"\n')
+                        f.write(f"}}\n")
+                except OSError as e:
+                    log_error(f"Failed to add encrypted stanza to refind.conf: {e}")
+
+    log_info("rEFInd installed and configured")
     return True, ""

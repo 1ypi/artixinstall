@@ -111,7 +111,7 @@ class InstallerConfig:
 
         # ── Packages ──
         self.additional_packages: list[str] = []
-        self.repositories: dict = {"lib32": True, "universe": False}
+        self.repositories: dict = {"lib32": False, "galaxy": False, "universe": False}
 
 
 def _build_main_menu(config: InstallerConfig) -> list[MenuItem]:
@@ -175,6 +175,8 @@ def _build_main_menu(config: InstallerConfig) -> list[MenuItem]:
     repo_parts = []
     if config.repositories.get("lib32"):
         repo_parts.append("lib32")
+    if config.repositories.get("galaxy"):
+        repo_parts.append("galaxy")
     if config.repositories.get("universe"):
         repo_parts.append("universe")
     repo_val = ", ".join(repo_parts) if repo_parts else "default"
@@ -830,6 +832,17 @@ def _main_loop(stdscr: curses.window) -> None:
         should_continue = _handle_menu_choice(screen, config, selected.key)
         if not should_continue:
             break
+
+        # Advance cursor to the next selectable menu item (cosmetic UX fix)
+        items = _build_main_menu(config)
+        selectable = [item for item in items if not item.is_separator]
+        found_current = False
+        for item in selectable:
+            if found_current:
+                last_selected_key = item.key
+                break
+            if item.key == selected.key:
+                found_current = True
 
 
 def main() -> None:

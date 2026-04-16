@@ -494,6 +494,7 @@ def configure_repositories(screen: Screen) -> dict | None:
     repos = {
         "lib32": False,
         "universe": False,
+        "galaxy": False,
     }
 
     result = yes_no(screen,
@@ -505,8 +506,17 @@ def configure_repositories(screen: Screen) -> dict | None:
     repos["lib32"] = result
 
     result = yes_no(screen,
+                    "Enable galaxy repository?\n"
+                    "(Community-maintained Artix packages)",
+                    default=False)
+    if result is None:
+        return None
+    repos["galaxy"] = result
+
+    result = yes_no(screen,
                     "Enable universe repository?\n"
-                    "(Community-maintained packages)",
+                    "(Additional community packages,\n"
+                    " uses dedicated universe.artixlinux.org server)",
                     default=False)
     if result is None:
         return None
@@ -694,6 +704,9 @@ def _apply_repositories_to_path(pacman_conf: str, repos: dict) -> tuple[bool, st
 
             if content == original:
                 log_info(f"lib32 repository already appeared enabled in {pacman_conf}")
+
+        if repos.get("galaxy") and "[galaxy]" not in content:
+            content += "\n[galaxy]\nInclude = /etc/pacman.d/mirrorlist\n"
 
         if repos.get("universe") and "[universe]" not in content:
             content += "\n[universe]\nServer = https://universe.artixlinux.org/$arch\n"

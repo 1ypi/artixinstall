@@ -63,10 +63,9 @@ def install_base_system(init_system: str,
     # Add kernel, headers, and firmware
     packages.extend([kernel, f"{kernel}-headers", "linux-firmware"])
 
-    # Add essential tools
+    # Add essential tools (bootloader packages are added separately
+    # via get_bootloader_packages() in the orchestration layer)
     packages.extend([
-        "grub",
-        "efibootmgr",
         "sudo",
         "nano",
         "vim",

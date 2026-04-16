@@ -404,27 +404,8 @@ def configure_hardware(screen: Screen) -> HardwareConfig | None:
     return config
 
 
-def apply_laptop_power(init_system: str) -> tuple[bool, str]:
-    """Enable laptop power management services inside the chroot."""
-    from artixinstall.installer.init import enable_service
 
-    # TLP isn't in our services.json — enable it manually based on init
-    enable_cmds = {
-        "openrc": "rc-update add tlp default",
-        "runit": "ln -s /etc/runit/sv/tlp /etc/runit/runsvdir/default/",
-        "s6": "s6-rc-bundle-update add default tlp",
-        "dinit": "dinitctl enable tlp",
-    }
 
-    cmd = enable_cmds.get(init_system)
-    if cmd:
-        rc, _, stderr = run(cmd, chroot=True)
-        if rc != 0:
-            log_error(f"Failed to enable TLP: {stderr}")
-            # Non-fatal
-
-    log_info(f"Laptop power management configured ({init_system})")
-    return True, ""
 def apply_laptop_power(init_system: str) -> tuple[bool, str]:
     """Enable laptop power management services inside the chroot."""
     service_packages = {

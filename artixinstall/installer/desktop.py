@@ -12,10 +12,9 @@ from artixinstall.tui.menu import run_selection_menu
 
 # ── Shared package groups ──
 
-_PIPEWIRE = [
-    "pipewire", "pipewire-pulse", "pipewire-alsa", "wireplumber",
-    "pipewire-jack",
-]
+# NOTE: Audio packages are NOT included in desktop definitions.
+# They are managed centrally by packages.py's get_audio_packages()
+# so the user's audio choice (pipewire / pulseaudio / none) is respected.
 
 _XORG = ["xorg-server", "xorg-xinit", "xorg-xrandr", "xorg-xsetroot"]
 
@@ -189,7 +188,7 @@ DESKTOP_ENVIRONMENTS = {
         "packages": [
             "gnome", "gnome-extra",
             "xdg-desktop-portal-gnome",
-            *_WAYLAND_BASE, *_PIPEWIRE, *_COMMON_UTILS,
+            *_WAYLAND_BASE, *_COMMON_UTILS,
         ],
         "display_manager": "gdm",
         "services": [],
@@ -202,7 +201,7 @@ DESKTOP_ENVIRONMENTS = {
             "plasma-meta", "kde-applications-meta",
             "xdg-desktop-portal-kde",
             "phonon-qt6-vlc",
-            *_XORG, *_WAYLAND_BASE, *_PIPEWIRE, *_COMMON_UTILS,
+            *_XORG, *_WAYLAND_BASE, *_COMMON_UTILS,
         ],
         "display_manager": "sddm",
         "services": [],
@@ -215,9 +214,9 @@ DESKTOP_ENVIRONMENTS = {
             "xfce4", "xfce4-goodies",
             "gvfs", "thunar-archive-plugin", "file-roller",
             "pavucontrol", "network-manager-applet",
-            *_XORG, *_PIPEWIRE, *_COMMON_UTILS,
+            *_XORG, *_COMMON_UTILS,
         ],
-        "display_manager": "lightdm",
+        "display_manager": "lightdm-gtk",
         "services": [],
     },
 
@@ -228,9 +227,9 @@ DESKTOP_ENVIRONMENTS = {
             "cinnamon", "nemo-fileroller", "gnome-terminal",
             "gnome-keyring",
             "blueberry",
-            *_XORG, *_PIPEWIRE, *_COMMON_UTILS,
+            *_XORG, *_COMMON_UTILS,
         ],
-        "display_manager": "lightdm",
+        "display_manager": "lightdm-gtk",
         "services": [],
     },
 
@@ -240,9 +239,9 @@ DESKTOP_ENVIRONMENTS = {
         "packages": [
             "mate", "mate-extra",
             "network-manager-applet",
-            *_XORG, *_PIPEWIRE, *_COMMON_UTILS,
+            *_XORG, *_COMMON_UTILS,
         ],
-        "display_manager": "lightdm",
+        "display_manager": "lightdm-gtk",
         "services": [],
     },
 
@@ -250,12 +249,12 @@ DESKTOP_ENVIRONMENTS = {
         "label": "Budgie",
         "category": "de",
         "packages": [
-            "budgie", "budgie-extras",
+            "budgie-desktop", "budgie-extras",
             "gnome-terminal", "nemo",
             "gnome-keyring",
-            *_XORG, *_PIPEWIRE, *_COMMON_UTILS,
+            *_XORG, *_COMMON_UTILS,
         ],
-        "display_manager": "lightdm",
+        "display_manager": "lightdm-gtk",
         "services": [],
     },
 
@@ -266,7 +265,7 @@ DESKTOP_ENVIRONMENTS = {
             "lxqt", "breeze-icons", "oxygen-icons",
             "xscreensaver",
             "network-manager-applet",
-            *_XORG, *_PIPEWIRE, *_COMMON_UTILS,
+            *_XORG, *_COMMON_UTILS,
         ],
         "display_manager": "sddm",
         "services": [],
@@ -276,10 +275,10 @@ DESKTOP_ENVIRONMENTS = {
         "label": "Deepin",
         "category": "de",
         "packages": [
-            "deepin", "deepin-extra",
-            *_XORG, *_PIPEWIRE, *_COMMON_UTILS,
+            "deepin", "deepin-extra", "deepin-kwin",
+            *_XORG, *_COMMON_UTILS,
         ],
-        "display_manager": "lightdm",
+        "display_manager": "lightdm-gtk",
         "services": [],
     },
 
@@ -288,9 +287,9 @@ DESKTOP_ENVIRONMENTS = {
         "category": "de",
         "packages": [
             "enlightenment", "terminology",
-            *_XORG, *_PIPEWIRE, *_COMMON_UTILS,
+            *_XORG, *_COMMON_UTILS,
         ],
-        "display_manager": "lightdm",
+        "display_manager": "lightdm-gtk",
         "services": [],
     },
 
@@ -307,7 +306,7 @@ DESKTOP_ENVIRONMENTS = {
             "foot", "thunar", "grim", "slurp", "wl-clipboard",
             "polkit-gnome", "xdg-desktop-portal-hyprland",
             "qt5-wayland", "qt6-wayland", "brightnessctl",
-            *_WAYLAND_BASE, *_PIPEWIRE, *_COMMON_UTILS,
+            *_WAYLAND_BASE, *_COMMON_UTILS,
         ],
         "display_manager": None,  # Started from TTY
         "services": [],
@@ -322,7 +321,7 @@ DESKTOP_ENVIRONMENTS = {
             "foot", "thunar", "grim", "slurp", "wl-clipboard",
             "polkit-gnome", "xdg-desktop-portal-wlr",
             "brightnessctl",
-            *_WAYLAND_BASE, *_PIPEWIRE, *_COMMON_UTILS,
+            *_WAYLAND_BASE, *_COMMON_UTILS,
         ],
         "display_manager": None,
         "services": [],
@@ -337,7 +336,7 @@ DESKTOP_ENVIRONMENTS = {
             "alacritty", "thunar", "feh", "picom",
             "lxappearance", "arandr",
             "network-manager-applet", "pavucontrol",
-            *_XORG, *_PIPEWIRE, *_COMMON_UTILS,
+            *_XORG, *_COMMON_UTILS,
         ],
         "display_manager": None,
         "services": [],
@@ -351,7 +350,7 @@ DESKTOP_ENVIRONMENTS = {
             "polybar", "rofi", "dunst",
             "alacritty", "thunar", "feh", "picom",
             "lxappearance",
-            *_XORG, *_PIPEWIRE, *_COMMON_UTILS,
+            *_XORG, *_COMMON_UTILS,
         ],
         "display_manager": None,
         "services": [],
@@ -363,7 +362,7 @@ DESKTOP_ENVIRONMENTS = {
         "packages": [
             "dwm", "dmenu", "st",
             "dunst", "feh", "picom",
-            *_XORG, *_PIPEWIRE, *_COMMON_UTILS,
+            *_XORG, *_COMMON_UTILS,
         ],
         "display_manager": None,
         "services": [],
@@ -376,7 +375,7 @@ DESKTOP_ENVIRONMENTS = {
             "qtile", "python-psutil", "python-iwlib",
             "rofi", "dunst",
             "alacritty", "thunar", "feh", "picom",
-            *_XORG, *_WAYLAND_BASE, *_PIPEWIRE, *_COMMON_UTILS,
+            *_XORG, *_WAYLAND_BASE, *_COMMON_UTILS,
         ],
         "display_manager": None,
         "services": [],
@@ -391,7 +390,7 @@ DESKTOP_ENVIRONMENTS = {
             "alacritty", "thunar", "feh", "picom",
             "lxappearance",
             "network-manager-applet", "volumeicon",
-            *_XORG, *_PIPEWIRE, *_COMMON_UTILS,
+            *_XORG, *_COMMON_UTILS,
         ],
         "display_manager": None,
         "services": [],
@@ -405,7 +404,7 @@ DESKTOP_ENVIRONMENTS = {
             "rofi", "dunst",
             "alacritty", "thunar", "feh", "picom",
             "lxappearance", "network-manager-applet",
-            *_XORG, *_PIPEWIRE, *_COMMON_UTILS,
+            *_XORG, *_COMMON_UTILS,
         ],
         "display_manager": None,
         "services": [],
@@ -419,11 +418,40 @@ DESKTOP_ENVIRONMENTS = {
             "waybar", "wofi", "dunst",
             "foot", "thunar", "grim", "slurp", "wl-clipboard",
             "polkit-gnome", "xdg-desktop-portal-wlr",
-            *_WAYLAND_BASE, *_PIPEWIRE, *_COMMON_UTILS,
+            *_WAYLAND_BASE, *_COMMON_UTILS,
         ],
         "display_manager": None,
         "services": [],
-    }
+    },
+
+    "mangowm": {
+        "label": "MangoWM (Wayland compositor – dwl-based)",
+        "category": "wm",
+        "packages": [
+            # MangoWM is AUR-only (mangowm-git). The installer will
+            # note this and skip validation if the package is missing.
+            "waybar", "wofi", "dunst",
+            "foot", "thunar", "grim", "slurp", "wl-clipboard",
+            "polkit-gnome", "xdg-desktop-portal-wlr",
+            *_WAYLAND_BASE, *_COMMON_UTILS,
+        ],
+        "display_manager": None,
+        "services": [],
+    },
+
+    "niri": {
+        "label": "Niri (Wayland scrollable tiling)",
+        "category": "wm",
+        "packages": [
+            "niri",
+            "waybar", "fuzzel", "dunst",
+            "foot", "thunar", "grim", "slurp", "wl-clipboard",
+            "polkit-gnome", "xdg-desktop-portal-gnome",
+            *_WAYLAND_BASE, *_COMMON_UTILS,
+        ],
+        "display_manager": None,
+        "services": [],
+    },
 }
 
 
