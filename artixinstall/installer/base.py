@@ -466,8 +466,9 @@ def install_aur_packages(aur_packages: list[str],
                          username: str) -> tuple[bool, str]:
     """Install packages from the AUR inside the chroot.
 
-    Installs ``git`` and ``base-devel`` if needed, then uses ``makepkg``
-    running as *username* (``makepkg`` refuses to run as root).
+    Builds and installs ``yay`` (AUR helper) first, then uses it to install
+    the requested packages.  ``yay`` handles recursive AUR dependency
+    resolution automatically (e.g. mangowm-git → scenefx0.4).
 
     Parameters
     ----------
@@ -484,18 +485,18 @@ def install_aur_packages(aur_packages: list[str],
     if not aur_packages:
         return True, ""
 
-    # Ensure git and base-devel are installed (not guaranteed in base image)
+    # ── Step 1: Install build prerequisites ──
     rc, _, stderr = run(
-        ["pacman", "-S", "--noconfirm", "--needed", "git", "base-devel"],
+        ["pacman", "-S", "--noconfirm", "--needed", "git", "base-devel", "go"],
         chroot=True,
         timeout=600,
     )
     if rc != 0:
-        return False, f"Failed to install AUR build dependencies (git, base-devel): {stderr}"
+        return False, f"Failed to install AUR build dependencies: {stderr}"
 
     build_dir = f"/home/{username}/.cache/aur-build"
 
-    # Create the build directory owned by the user
+    # Create build directory owned by user
     rc, _, stderr = run(
         f"mkdir -p {build_dir} && chown {username}:{username} {build_dir}",
         chroot=True,
@@ -503,48 +504,55 @@ def install_aur_packages(aur_packages: list[str],
     if rc != 0:
         return False, f"Failed to create AUR build directory: {stderr}"
 
-    # Temporarily allow the user to run pacman without password (for makepkg -si)
+    # Temporarily allow user to run pacman without password
     sudoers_tmp = "/etc/sudoers.d/aur-install-tmp"
     rc, _, stderr = run(
-        f'echo "{username} ALL=(ALL) NOPASSWD: /usr/bin/pacman" > {sudoers_tmp}',
+        f'echo "{username} ALL=(ALL) NOPASSWD: ALL" > {sudoers_tmp} && chmod 440 {sudoers_tmp}',
         chroot=True,
     )
     if rc != 0:
         log_error(f"Failed to set temp sudoers for AUR install: {stderr}")
 
+    # ── Step 2: Build and install yay (AUR helper) ──
+    yay_dir = f"{build_dir}/yay"
+    rc, _, stderr = run(
+        f"su - {username} -c 'git clone --depth 1 https://aur.archlinux.org/yay.git {yay_dir}'",
+        chroot=True,
+        timeout=120,
+    )
+    if rc != 0:
+        run(f"rm -f {sudoers_tmp}", chroot=True)
+        return False, f"Failed to clone yay: {stderr}"
+
+    rc, _, stderr = run(
+        f"su - {username} -c 'cd {yay_dir} && makepkg -si --noconfirm --needed'",
+        chroot=True,
+        timeout=600,
+    )
+    if rc != 0:
+        run(f"rm -f {sudoers_tmp}", chroot=True)
+        return False, f"Failed to build/install yay: {stderr}"
+
+    log_info("yay AUR helper installed successfully")
+
+    # ── Step 3: Install the actual AUR packages via yay ──
     errors = []
     for pkg in aur_packages:
-        log_info(f"Installing AUR package: {pkg}")
+        log_info(f"Installing AUR package via yay: {pkg}")
 
-        clone_url = f"https://aur.archlinux.org/{pkg}.git"
-        pkg_dir = f"{build_dir}/{pkg}"
-
-        # Clone the PKGBUILD
         rc, _, stderr = run(
-            f"su - {username} -c 'git clone --depth 1 {clone_url} {pkg_dir}'",
-            chroot=True,
-            timeout=120,
-        )
-        if rc != 0:
-            errors.append(f"Failed to clone {pkg}: {stderr}")
-            continue
-
-        # Build and install
-        rc, _, stderr = run(
-            f"su - {username} -c 'cd {pkg_dir} && makepkg -si --noconfirm --needed'",
+            f"su - {username} -c 'yay -S --noconfirm --needed --answerdiff None --answerclean None {pkg}'",
             chroot=True,
             timeout=1800,
         )
         if rc != 0:
-            errors.append(f"Failed to build/install {pkg}: {stderr}")
+            errors.append(f"Failed to install {pkg}: {stderr}")
             continue
 
         log_info(f"AUR package {pkg} installed successfully")
 
-    # Remove the temporary sudoers entry
+    # ── Cleanup ──
     run(f"rm -f {sudoers_tmp}", chroot=True)
-
-    # Clean up build dir
     run(f"rm -rf {build_dir}", chroot=True)
 
     if errors:
