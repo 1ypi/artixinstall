@@ -1,6 +1,6 @@
 # artixinstall
 
-An interactive, menu-driven TUI installer for **Artix Linux** — the systemd-free Arch-based distribution. Inspired by `archinstall`, built specifically for Artix with full support for all four init systems and comprehensive hardware detection.
+An interactive, menu-driven TUI installer for **Artix Linux**, the systemd-free Arch-based distribution. Inspired by `archinstall`, built specifically for Artix with full support for all four init systems and comprehensive hardware detection.
 
 <p align="center">
   <img src="https://i.imgur.com/pcjtNz9.png" width="700"/>
@@ -9,51 +9,57 @@ An interactive, menu-driven TUI installer for **Artix Linux** — the systemd-fr
 ## Features
 
 ### Core
-- **No external dependencies** — built entirely with Python's standard library (`curses`)
-- **Four init systems** — full support for OpenRC, runit, s6, and dinit
-- **Guided flow** — pre-filled defaults, clear value indicators, and archinstall-style organization
-- **Comprehensive logging** — all commands and output logged to `/tmp/artixinstall.log`
+- **No external dependencies** -- built entirely with Python's standard library (`curses`)
+- **Four init systems** -- full support for OpenRC, runit, s6, and dinit
+- **Guided flow** -- pre-filled defaults, clear value indicators, and archinstall-style organization
+- **Comprehensive logging** -- all commands and output logged to `/tmp/artixinstall.log`
 
 ### Disk & Boot
-- **Automatic partitioning** — wipes and partitions entire disk (EFI/BIOS aware)
-- **Manual partitioning** — drops into `cfdisk` for advanced users
-- **LUKS encryption** — full-disk encryption with automatic mkinitcpio hook setup
-- **Filesystem selection** — ext4, btrfs, xfs, or f2fs
-- **Configurable swap** — 4 GB, 8 GB, or none
-- **GRUB & systemd-boot** — both supported with LUKS and microcode awareness
+- **Automatic partitioning** -- wipes and partitions entire disk (EFI/BIOS aware)
+- **Manual partitioning** -- drops into `cfdisk` for advanced users
+- **LUKS encryption** -- full-disk encryption with automatic mkinitcpio hook setup
+- **Filesystem selection** -- ext4, btrfs, xfs, or f2fs
+- **Configurable swap** -- 4 GB, 8 GB, or none
+- **Three bootloaders** -- GRUB, systemd-boot (via egummiboot), and rEFInd, all with LUKS and microcode awareness
 
-### Desktop Environments (18 options)
+### Desktop Environments (20 options)
 | Category | Options |
 |---|---|
 | **Full DEs** | GNOME, KDE Plasma, XFCE, Cinnamon, MATE, Budgie, LXQt, Deepin, Enlightenment |
-| **Tiling WMs** | Hyprland, Sway, i3, bspwm, dwm, Qtile, awesome, River |
-| **Stacking WMs** | Openbox |
+| **Wayland WMs** | Hyprland, Sway, River, MangoWM (AUR), Niri (AUR) |
+| **X11 WMs** | i3, bspwm, dwm, Qtile, awesome, Openbox |
+
+MangoWM and Niri are AUR-only packages. The installer automatically builds and installs `yay`, then uses it to install AUR packages with full recursive dependency resolution.
+
+### Display Managers
+Six greeter options with per-DE recommendations and warnings for non-ideal combinations:
+- GDM, SDDM, LightDM (GTK greeter), LightDM (Slick greeter), Ly, or TTY only
 
 ### Hardware Detection
-- **GPU auto-detection** — Intel, AMD, NVIDIA (proprietary/open/nouveau), VMware/VirtualBox
-- **WiFi detection** — automatic chipset detection via lspci and rfkill
-- **Bluetooth detection** — USB and PCI adapter scanning
-- **Laptop detection** — battery/chassis/touchpad heuristics for TLP and ACPI
-- **CPU microcode** — auto-selects Intel or AMD microcode package
-- **Printing support** — optional CUPS installation
+- **GPU auto-detection** -- Intel, AMD, NVIDIA (proprietary/open/nouveau), VMware/VirtualBox
+- **WiFi detection** -- automatic chipset detection via lspci and rfkill
+- **Bluetooth detection** -- USB and PCI adapter scanning
+- **Laptop detection** -- battery/chassis/touchpad heuristics for TLP and ACPI
+- **CPU microcode** -- auto-selects Intel or AMD microcode package
+- **Printing support** -- optional CUPS installation
 
 ### System Configuration
-- **4 kernels** — linux, linux-lts, linux-zen, linux-hardened
-- **Audio servers** — PipeWire (recommended) or PulseAudio
-- **Installation profiles** — Minimal, Desktop, Server, Development
-- **Network managers** — NetworkManager, dhcpcd, wpa_supplicant, or none
+- **4 kernels** -- linux, linux-lts, linux-zen, linux-hardened
+- **Audio servers** -- PipeWire (recommended) or PulseAudio, with automatic session autostart for all WMs on Artix (no systemd user service required)
+- **Installation profiles** -- Minimal, Desktop, Server, Development
+- **Network managers** -- NetworkManager, dhcpcd, wpa_supplicant, or none
 
 ### Package Management
-- **Categorized package browser** — 40+ packages across 8 categories  
+- **Categorized package browser** -- 40+ packages across 8 categories
   (browsers, multimedia, office, dev tools, system tools, networking, fonts, gaming)
-- **Custom package entry** — type any package name to add it
-- **Optional repositories** — lib32 and universe toggles
+- **Custom package entry** -- type any package name to add it
+- **Optional repositories** -- lib32, universe, and galaxy toggles (lib32 disabled by default)
 
 ### Safety
-- **Destructive operations require explicit "yes"** — not just Enter
-- **Retry/Abort/Skip on failures** — never leaves you stranded
-- **Passwords never logged** — automatic masking in all log output
-- **Input validation** — injection-safe username/hostname/locale handling
+- **Destructive operations require explicit "yes"** -- not just Enter
+- **Retry/Abort/Skip on failures** -- never leaves you stranded
+- **Passwords never logged** -- automatic masking in all log output
+- **Input validation** -- injection-safe username/hostname/locale handling
 
 ## Requirements
 
@@ -95,7 +101,8 @@ python -m artixinstall
 - This project is currently maintained by one person, and I have not tested every possible combination yet.
 - If you try it, please test it and send feedback if something breaks or feels rough. It would be genuinely appreciated.
 - NVIDIA systems are supported, but NVIDIA plus Wayland compositors such as Hyprland can still need manual post-install tuning depending on driver choice and GPU generation.
-- The installer now adds basic NVIDIA-specific Hyprland environment variables automatically when Hyprland and an NVIDIA driver are selected together.
+- The installer adds basic NVIDIA-specific Hyprland environment variables automatically when Hyprland and an NVIDIA driver are selected together.
+- MangoWM and Niri require building from source via AUR. The installer handles this automatically, but build times will vary depending on hardware.
 
 ## Supported Init Systems
 
@@ -117,17 +124,18 @@ artixinstall/
 │   └── prompts.py            # Text input, password, yes/no prompts
 ├── installer/
 │   ├── disk.py               # Partition, format, mount, LUKS encryption
-│   ├── base.py               # basestrap, fstab generation, mirrorlist
+│   ├── base.py               # basestrap, fstab generation, mirrorlist, AUR install
 │   ├── init.py               # Init system selection & service mapping
 │   ├── locale.py             # Locale, timezone, keyboard layout
 │   ├── network.py            # Hostname, network manager setup
-│   ├── users.py              # Root password, user creation, sudo
-│   ├── bootloader.py         # GRUB / systemd-boot (LUKS-aware)
-│   ├── desktop.py            # 18 DE/WM options with package lists
+│   ├── users.py              # Root password, user creation, sudo, PipeWire autostart
+│   ├── bootloader.py         # GRUB / systemd-boot / rEFInd (LUKS-aware)
+│   ├── desktop.py            # 20 DE/WM options with package lists and AUR support
 │   ├── hardware.py           # GPU, WiFi, Bluetooth, laptop detection
-│   └── packages.py           # Kernel, audio, profiles, package browser
+│   ├── packages.py           # Kernel, audio, profiles, package browser
+│   └── prereqs.py            # Live ISO prerequisite checks
 ├── data/
-│   ├── services.json         # Service-to-init mapping (13 services × 4 inits)
+│   ├── services.json         # Service-to-init mapping (13 services x 4 inits)
 │   ├── mirrors.txt           # Default Artix mirror list
 │   └── locales.txt           # 30 common locales
 ├── utils/
@@ -141,9 +149,9 @@ artixinstall/
 
 ## How It Works
 
-1. **Configure** — Navigate the grouped main menu and set each option
-2. **Review** — Select "Install" to see a full summary of your choices
-3. **Install** — Confirm to begin the automated installation:
+1. **Configure** -- Navigate the grouped main menu and set each option
+2. **Review** -- Select "Install" to see a full summary of your choices
+3. **Install** -- Confirm to begin the automated installation:
    - Partitions and formats the disk (with optional LUKS)
    - Installs base system + all selected packages via `basestrap`
    - Configures locale, timezone, hostname, users
@@ -151,23 +159,25 @@ artixinstall/
    - Installs bootloader with microcode and encryption support
    - Enables all init-specific services
    - Configures hardware drivers and power management
-4. **Reboot** — Unmount and reboot into your new Artix system
+   - Builds and installs AUR packages if needed (MangoWM, Niri)
+   - Sets up PipeWire autostart for window manager sessions
+4. **Reboot** -- Unmount and reboot into your new Artix system
 
 ## Contributing
 
 Contributions are welcome! Some areas where help is appreciated:
 
 - **Testing** on different hardware configurations and init systems
-- **Adding more DEs/WMs** — the desktop module is designed to be extended easily
-- **LVM support** — adding LVM partition layouts
-- **Btrfs subvolumes** — automatic subvolume creation for snapshots
-- **Translations** — locale and TUI text internationalization
-- **Accessibility** — screen reader support
+- **Adding more DEs/WMs** -- the desktop module is designed to be extended easily
+- **LVM support** -- adding LVM partition layouts
+- **Btrfs subvolumes** -- automatic subvolume creation for snapshots
+- **Translations** -- locale and TUI text internationalization
+- **Accessibility** -- screen reader support
 
 ### Development
 
 ```bash
-# Zero dependencies — just Python 3.10+ and curses
+# Zero dependencies -- just Python 3.10+ and curses
 # Test individual modules:
 python -c "from artixinstall.installer.init import load_services; print(load_services())"
 python -c "from artixinstall.installer.hardware import detect_gpu; print(detect_gpu())"
@@ -182,14 +192,16 @@ sudo python -m artixinstall
 | Problem | Solution |
 |---|---|
 | "must be run as root" | Use `sudo python -m artixinstall` |
-| Terminal too small | Resize to at least 60×20 |
+| Terminal too small | Resize to at least 60x20 |
 | basestrap fails | Check internet connection and mirror availability |
 | LUKS passphrase prompt at boot | Enter the passphrase you set during installation |
 | No WiFi after install | Verify NetworkManager is enabled for your init system |
 | Black screen after install | Try a different GPU driver option |
+| AUR package build fails | Check network access and disk space, review `/tmp/artixinstall.log` |
+| No audio on WM session | Verify PipeWire is selected and check `~/.local/bin/pipewire-start.sh` exists |
 
 All commands are logged to `/tmp/artixinstall.log`.
 
 ## License
 
-GPL-3.0 — see [LICENSE](LICENSE) for details.
+GPL-3.0 -- see [LICENSE](LICENSE) for details.
