@@ -152,6 +152,7 @@ DISPLAY_MANAGER_RECOMMENDATIONS = {
     "niri": {
         "recommended": "ly",
         "warnings": {
+            "sddm": "Niri is usually started from Ly/TTY, and SDDM requires tweaks if installed with OpenRC, Ly/TTY are usually safer choices.",
             "gdm": "Niri is usually started from Ly or directly from TTY. GDM is not the safest default.",
             "lightdm-gtk": "Niri can work with LightDM, but Ly/TTY are usually safer choices.",
             "lightdm-slick": "Niri can work with LightDM, but Ly/TTY are usually safer choices.",
