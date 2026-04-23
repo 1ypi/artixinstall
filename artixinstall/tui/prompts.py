@@ -51,18 +51,33 @@ def text_input(screen: Screen, prompt: str,
 
             y = screen.content_y + 2
 
-            # Prompt
-            screen.draw_text(y, 2, prompt, COLOR_TITLE, bold=True)
-            y += 2
+            # Prompt (may be multi-line)
+            prompt_lines = prompt.split("\n")
+            for pl in prompt_lines:
+                screen.draw_text(y, 2, pl, COLOR_TITLE, bold=True)
+                y += 1
+            y += 1  # blank line after prompt
 
-            # Input field
-            display_text = (mask_char * len(buffer)) if mask_char else "".join(buffer)
+            # Input field with horizontal scrolling
+            full_text = (mask_char * len(buffer)) if mask_char else "".join(buffer)
             field_prefix = "> "
-            screen.draw_text(y, 2, field_prefix, COLOR_NORMAL)
-            screen.draw_text(y, 2 + len(field_prefix), display_text, COLOR_VALUE_SET)
+            field_start_x = 2 + len(field_prefix)
+            visible_width = max(1, screen.width - field_start_x - 2)
 
-            # Position cursor
-            cursor_x = 2 + len(field_prefix) + (cursor_pos if not mask_char else cursor_pos)
+            # Compute scroll offset so cursor is always visible
+            scroll_offset = 0
+            if cursor_pos > visible_width - 1:
+                scroll_offset = cursor_pos - visible_width + 1
+
+            visible_text = full_text[scroll_offset:scroll_offset + visible_width]
+
+            screen.draw_text(y, 2, field_prefix, COLOR_NORMAL)
+            # Clear the field area first, then draw visible portion
+            screen.draw_text(y, field_start_x, " " * visible_width, COLOR_NORMAL)
+            screen.draw_text(y, field_start_x, visible_text, COLOR_VALUE_SET)
+
+            # Position cursor relative to scroll offset
+            cursor_x = field_start_x + (cursor_pos - scroll_offset)
             try:
                 screen.stdscr.move(y, min(cursor_x, screen.width - 2))
             except curses.error:
@@ -177,8 +192,12 @@ def yes_no(screen: Screen, question: str,
         screen.draw_footer("↑↓ Navigate  Enter Select  ESC Cancel")
 
         y = screen.content_y + 2
-        screen.draw_text(y, 2, question, COLOR_TITLE, bold=True)
-        y += 2
+        # Draw question text, handling embedded newlines
+        question_lines = question.split("\n")
+        for ql in question_lines:
+            screen.draw_text(y, 2, ql, COLOR_TITLE, bold=True)
+            y += 1
+        y += 1  # blank line between question and options
 
         for i, opt in enumerate(options):
             if i == selected:
