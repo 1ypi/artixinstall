@@ -123,7 +123,7 @@ def _write_hyprland_nvidia_config(username: str) -> tuple[bool, str]:
             )
         lines_to_add = []
         for line in _HYPRLAND_NVIDIA_ENVS:
-            if _HYPRLAND_NVIDIA_ENVS if line not in content and conf_exists:
+            if line not in content and conf_exists:
                 lines_to_add.append(line)
         if not conf_exists:
             lines_to_add = [line for line in _HYPRLAND_NVIDIA_CONFIG]
