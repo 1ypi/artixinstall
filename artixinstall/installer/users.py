@@ -20,10 +20,10 @@ _HYPRLAND_NVIDIA_ENVS = [
     "env = WLR_NO_HARDWARE_CURSORS,1",
 ]
 
-with open("../data/hyprland.conf", "r") as conf:
-    _HYPRLAND_NVIDIA_CONFIG = [
-    line for line in conf.read().splitlines()
-]
+hypr_conf = Path(__file__).parent.parent / "data" / "hyprland.conf"
+if hypr_conf.exists():
+    with open(hypr_conf, "r") as conf:
+        _HYPRLAND_NVIDIA_CONFIG = [line for line in conf.read().splitlines()]
 _HYPRLAND_PIPEWIRE_AUTOSTART = [
     "exec-once = pipewire",
     "exec-once = pipewire-pulse",
