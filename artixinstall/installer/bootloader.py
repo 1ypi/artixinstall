@@ -72,16 +72,19 @@ def configure_grub_custom_params(screen: Screen) -> str:
     """
     from artixinstall.tui.prompts import yes_no, text_input
 
-    if not yes_no(screen,
-            "Set custom GRUB install parameters?\n"
-            "Only choose yes if you know what you're doing.",
-            default=False):
+    if not yes_no(
+        screen,
+        "Set custom GRUB install parameters?\n"
+        "Only choose yes if you know what you're doing.",
+        default=False,
+    ):
         return ""
 
-    params = text_input(screen,
-        "Enter custom GRUB install parameters:\n"
-        "(e.g., --target=x86_64-efi-signed)",
-        default="")
+    params = text_input(
+        screen,
+        "Enter custom GRUB install parameters:\n" "(e.g., --target=x86_64-efi-signed)",
+        default="",
+    )
     return params.strip() if params else ""
 
 
@@ -93,8 +96,9 @@ def get_bootloader_packages(bootloader: str, efi: bool) -> list[str]:
     return list(info.get("packages_bios", []))
 
 
-def apply_bootloader(bootloader: str, disk_config: dict,
-                     kernel: str = "linux", grub_params: str = "") -> tuple[bool, str]:
+def apply_bootloader(
+    bootloader: str, disk_config: dict, kernel: str = "linux", grub_params: str = ""
+) -> tuple[bool, str]:
     """
     Install and configure the selected bootloader inside the chroot.
 
@@ -132,8 +136,9 @@ def apply_bootloader(bootloader: str, disk_config: dict,
         return False, f"Unknown bootloader: {bootloader}"
 
 
-def _install_grub(efi: bool, disk: str, disk_config: dict,
-                  kernel: str, grub_params: str = "") -> tuple[bool, str]:
+def _install_grub(
+    efi: bool, disk: str, disk_config: dict, kernel: str, grub_params: str = ""
+) -> tuple[bool, str]:
     """Install and configure GRUB, with LUKS and custom parameters support."""
     encrypt = disk_config.get("encrypt", False)
 
@@ -151,17 +156,21 @@ def _install_grub(efi: bool, disk: str, disk_config: dict,
                     content = f.read()
 
                 # Add cryptdevice parameter regardless of the existing defaults.
-                crypto_args = f"cryptdevice=UUID={root_uuid}:cryptroot root=/dev/mapper/cryptroot"
-                cmdline_match = re.search(r'^GRUB_CMDLINE_LINUX="([^"]*)"', content, re.MULTILINE)
+                crypto_args = (
+                    f"cryptdevice=UUID={root_uuid}:cryptroot root=/dev/mapper/cryptroot"
+                )
+                cmdline_match = re.search(
+                    r'^GRUB_CMDLINE_LINUX="([^"]*)"', content, re.MULTILINE
+                )
                 if cmdline_match:
                     existing_args = cmdline_match.group(1).strip()
                     merged_args = f"{crypto_args} {existing_args}".strip()
                     merged_args = " ".join(dict.fromkeys(merged_args.split()))
                     crypto_line = f'GRUB_CMDLINE_LINUX="{merged_args}"'
                     content = (
-                        content[:cmdline_match.start()]
+                        content[: cmdline_match.start()]
                         + crypto_line
-                        + content[cmdline_match.end():]
+                        + content[cmdline_match.end() :]
                     )
                 else:
                     content += f'\nGRUB_CMDLINE_LINUX="{crypto_args}"\n'
@@ -185,9 +194,11 @@ def _install_grub(efi: bool, disk: str, disk_config: dict,
 
     if efi:
         # UEFI GRUB installation
-        grub_cmd = "grub-install --target=x86_64-efi --efi-directory=/boot --bootloader-id=artix"
+        grub_cmd = "grub-install --target=x86_64-efi --efi-directory=/boot"
         if grub_params:
-            grub_cmd = f"grub-install {grub_params} --target=x86_64-efi --efi-directory=/boot --bootloader-id=artix"
+            grub_cmd = (
+                f"grub-install {grub_params} --target=x86_64-efi --efi-directory=/boot"
+            )
         rc, _, stderr = run(grub_cmd, chroot=True)
         if rc != 0:
             return False, f"grub-install (EFI) failed: {stderr}"
@@ -337,7 +348,9 @@ def _manual_systemd_boot_install() -> tuple[bool, str]:
     stub_candidates = [
         os.path.join(MOUNT_POINT, "usr", "lib", "egummiboot", "egummibootx64.efi"),
         os.path.join(MOUNT_POINT, "usr", "lib", "gummiboot", "gummibootx64.efi"),
-        os.path.join(MOUNT_POINT, "usr", "lib", "systemd", "boot", "efi", "systemd-bootx64.efi"),
+        os.path.join(
+            MOUNT_POINT, "usr", "lib", "systemd", "boot", "efi", "systemd-bootx64.efi"
+        ),
         "/usr/lib/egummiboot/egummibootx64.efi",
         "/usr/lib/gummiboot/gummibootx64.efi",
         "/usr/lib/systemd/boot/efi/systemd-bootx64.efi",
@@ -352,7 +365,9 @@ def _manual_systemd_boot_install() -> tuple[bool, str]:
     for candidate in stub_candidates:
         if os.path.isfile(candidate):
             try:
-                shutil.copy2(candidate, os.path.join(efi_dest_dir, "systemd-bootx64.efi"))
+                shutil.copy2(
+                    candidate, os.path.join(efi_dest_dir, "systemd-bootx64.efi")
+                )
                 shutil.copy2(candidate, os.path.join(efi_boot_dir, "BOOTX64.EFI"))
                 stub_found = True
                 log_info(f"Copied EFI boot stub from {candidate}")
@@ -387,7 +402,9 @@ def _install_refind(disk_config: dict, kernel: str) -> tuple[bool, str]:
         root_uuid = uuid_out.strip() if rc == 0 else ""
 
         if root_uuid:
-            refind_conf = os.path.join(MOUNT_POINT, "boot", "EFI", "refind", "refind.conf")
+            refind_conf = os.path.join(
+                MOUNT_POINT, "boot", "EFI", "refind", "refind.conf"
+            )
             if os.path.isfile(refind_conf):
                 try:
                     with open(refind_conf, "a") as f:
@@ -403,7 +420,9 @@ def _install_refind(disk_config: dict, kernel: str) -> tuple[bool, str]:
                         f.write(f'    volume  "Artix Linux"\n')
                         f.write(f"    loader  /{vmlinuz}\n")
                         f.write(f"    initrd  /{initrd}\n")
-                        f.write(f'    options "cryptdevice=UUID={root_uuid}:cryptroot root=/dev/mapper/cryptroot rw"\n')
+                        f.write(
+                            f'    options "cryptdevice=UUID={root_uuid}:cryptroot root=/dev/mapper/cryptroot rw"\n'
+                        )
                         f.write(f"}}\n")
                 except OSError as e:
                     log_error(f"Failed to add encrypted stanza to refind.conf: {e}")

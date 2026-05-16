@@ -14,7 +14,6 @@ from artixinstall.tui.screen import Screen
 from artixinstall.tui.menu import run_menu, run_selection_menu, MenuItem
 from artixinstall.tui.prompts import yes_no
 
-
 # ── GPU driver options ──
 
 GPU_DRIVERS = {
@@ -25,37 +24,48 @@ GPU_DRIVERS = {
     "nvidia-proprietary": {
         "label": "NVIDIA (proprietary)",
         "packages": [
-            "nvidia", "nvidia-utils", "nvidia-settings",
-            "lib32-nvidia-utils",
-            "libva-nvidia-driver",
+            "nvidia-580xx-dkms",
+            "nvidia-580xx-utils",
+            "nvidia-580xx-settings",
+            "lib32-nvidia-580xx-utils",
         ],
     },
     "nvidia-open": {
         "label": "NVIDIA (open kernel modules, Turing+)",
         "packages": [
-            "nvidia-open", "nvidia-utils", "nvidia-settings",
+            "nvidia-open",
+            "nvidia-utils",
+            "nvidia-settings",
             "lib32-nvidia-utils",
         ],
     },
     "nvidia-nouveau": {
         "label": "NVIDIA (nouveau, open-source)",
         "packages": [
-            "xf86-video-nouveau", "mesa", "lib32-mesa",
+            "xf86-video-nouveau",
+            "mesa",
+            "lib32-mesa",
         ],
     },
     "amd": {
         "label": "AMD (AMDGPU, open-source)",
         "packages": [
-            "xf86-video-amdgpu", "mesa", "lib32-mesa",
-            "vulkan-radeon", "lib32-vulkan-radeon",
+            "xf86-video-amdgpu",
+            "mesa",
+            "lib32-mesa",
+            "vulkan-radeon",
+            "lib32-vulkan-radeon",
         ],
     },
     "intel": {
         "label": "Intel (integrated)",
         "packages": [
-            "mesa", "lib32-mesa",
-            "vulkan-intel", "lib32-vulkan-intel",
-            "intel-media-driver", "libva-intel-driver",
+            "mesa",
+            "lib32-mesa",
+            "vulkan-intel",
+            "lib32-vulkan-intel",
+            "intel-media-driver",
+            "libva-intel-driver",
         ],
     },
     "vmware": {
@@ -89,7 +99,9 @@ def detect_gpu() -> list[str]:
         detected.append("nvidia")
     if "amd" in output or "radeon" in output or "advanced micro devices" in output:
         detected.append("amd")
-    if "intel" in output and ("vga" in output or "display" in output or "graphics" in output):
+    if "intel" in output and (
+        "vga" in output or "display" in output or "graphics" in output
+    ):
         detected.append("intel")
     if "vmware" in output or "virtualbox" in output or "qemu" in output:
         detected.append("vmware")
@@ -170,12 +182,16 @@ def detect_bluetooth() -> bool:
 
 def detect_touchpad() -> bool:
     """Check if a touchpad is present (laptop detection)."""
-    rc, stdout, _ = run("grep -ril 'touchpad\\|synaptics\\|trackpad' /sys/class/input/*/name 2>/dev/null")
+    rc, stdout, _ = run(
+        "grep -ril 'touchpad\\|synaptics\\|trackpad' /sys/class/input/*/name 2>/dev/null"
+    )
     if rc == 0 and stdout.strip():
         return True
 
     # Check libinput devices
-    rc, stdout, _ = run("find /sys/class/input -name 'name' -exec grep -li 'touchpad' {} \\; 2>/dev/null")
+    rc, stdout, _ = run(
+        "find /sys/class/input -name 'name' -exec grep -li 'touchpad' {} \\; 2>/dev/null"
+    )
     if rc == 0 and stdout.strip():
         return True
 
@@ -243,10 +259,12 @@ class HardwareConfig:
             packages.extend(_auto_gpu_packages())
         elif self.gpu_driver == "vmware":
             packages.extend(GPU_DRIVERS["vmware"]["packages"])
-            vmware_driver = _first_available_package([
-                "xf86-video-vmware",
-                "xlibre-xf86-video-vmware",
-            ])
+            vmware_driver = _first_available_package(
+                [
+                    "xf86-video-vmware",
+                    "xlibre-xf86-video-vmware",
+                ]
+            )
             if vmware_driver:
                 packages.append(vmware_driver)
         else:
@@ -261,33 +279,49 @@ class HardwareConfig:
 
         # WiFi
         if self.install_wifi:
-            packages.extend([
-                "iw", "wireless-regdb",
-                "linux-firmware",
-            ])
+            packages.extend(
+                [
+                    "iw",
+                    "wireless-regdb",
+                    "linux-firmware",
+                ]
+            )
 
         # Bluetooth
         if self.install_bluetooth:
-            packages.extend([
-                "bluez", "bluez-utils",
-            ])
+            packages.extend(
+                [
+                    "bluez",
+                    "bluez-utils",
+                ]
+            )
 
         # Laptop power management
         if self.install_laptop_power:
-            packages.extend([
-                "acpi", "acpid", "tlp",
-                "brightnessctl",
-                "xf86-input-libinput",
-            ])
+            packages.extend(
+                [
+                    "acpi",
+                    "acpid",
+                    "tlp",
+                    "brightnessctl",
+                    "xf86-input-libinput",
+                ]
+            )
 
         # Printing
         if self.install_printing:
-            packages.extend([
-                "cups", "cups-pdf",
-                "ghostscript", "gsfonts",
-                "gutenprint", "foomatic-db", "foomatic-db-gutenprint-ppds",
-                "system-config-printer",
-            ])
+            packages.extend(
+                [
+                    "cups",
+                    "cups-pdf",
+                    "ghostscript",
+                    "gsfonts",
+                    "gutenprint",
+                    "foomatic-db",
+                    "foomatic-db-gutenprint-ppds",
+                    "system-config-printer",
+                ]
+            )
 
         return packages
 
@@ -311,10 +345,12 @@ def _auto_gpu_packages() -> list[str]:
 
     if "vmware" in detected:
         packages.extend(GPU_DRIVERS["vmware"]["packages"])
-        vmware_driver = _first_available_package([
-            "xf86-video-vmware",
-            "xlibre-xf86-video-vmware",
-        ])
+        vmware_driver = _first_available_package(
+            [
+                "xf86-video-vmware",
+                "xlibre-xf86-video-vmware",
+            ]
+        )
         if vmware_driver:
             packages.append(vmware_driver)
     else:
@@ -363,7 +399,11 @@ def configure_hardware(screen: Screen) -> HardwareConfig | None:
 
     # ── WiFi ──
     has_wifi = detect_wifi()
-    wifi_q = "WiFi hardware detected. Install WiFi support?" if has_wifi else "Install WiFi support? (no WiFi detected)"
+    wifi_q = (
+        "WiFi hardware detected. Install WiFi support?"
+        if has_wifi
+        else "Install WiFi support? (no WiFi detected)"
+    )
     result = yes_no(screen, wifi_q, default=has_wifi)
     if result is None:
         return None
@@ -371,7 +411,11 @@ def configure_hardware(screen: Screen) -> HardwareConfig | None:
 
     # ── Bluetooth ──
     has_bt = detect_bluetooth()
-    bt_q = "Bluetooth hardware detected. Install Bluetooth support?" if has_bt else "Install Bluetooth support? (no Bluetooth detected)"
+    bt_q = (
+        "Bluetooth hardware detected. Install Bluetooth support?"
+        if has_bt
+        else "Install Bluetooth support? (no Bluetooth detected)"
+    )
     result = yes_no(screen, bt_q, default=has_bt)
     if result is None:
         return None
@@ -379,7 +423,11 @@ def configure_hardware(screen: Screen) -> HardwareConfig | None:
 
     # ── Laptop power management ──
     laptop = is_laptop()
-    laptop_q = "Laptop detected. Install power management (TLP, ACPI)?" if laptop else "Install laptop power management? (desktop detected)"
+    laptop_q = (
+        "Laptop detected. Install power management (TLP, ACPI)?"
+        if laptop
+        else "Install laptop power management? (desktop detected)"
+    )
     result = yes_no(screen, laptop_q, default=laptop)
     if result is None:
         return None
@@ -394,7 +442,11 @@ def configure_hardware(screen: Screen) -> HardwareConfig | None:
     # ── Microcode ──
     cpu_vendor = detect_cpu_vendor()
     if cpu_vendor in ("intel", "amd"):
-        result = yes_no(screen, f"Install {cpu_vendor.upper()} CPU microcode updates? (recommended)", default=True)
+        result = yes_no(
+            screen,
+            f"Install {cpu_vendor.upper()} CPU microcode updates? (recommended)",
+            default=True,
+        )
         if result is None:
             return None
         config.install_microcode = result
@@ -402,8 +454,6 @@ def configure_hardware(screen: Screen) -> HardwareConfig | None:
         config.install_microcode = False
 
     return config
-
-
 
 
 def apply_laptop_power(init_system: str) -> tuple[bool, str]:

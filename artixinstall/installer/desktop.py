@@ -21,7 +21,8 @@ _XORG = ["xorg-server", "xorg-xinit", "xorg-xrandr", "xorg-xsetroot"]
 _WAYLAND_BASE = ["xorg-xwayland", "xdg-desktop-portal"]
 
 _COMMON_UTILS = [
-    "xdg-utils", "xdg-user-dirs",
+    "xdg-utils",
+    "xdg-user-dirs",
 ]
 
 DISPLAY_MANAGERS = {
@@ -37,7 +38,7 @@ DISPLAY_MANAGERS = {
     },
     "sddm": {
         "label": "SDDM",
-        "packages": ["sddm", "sddm-theme-artix"],
+        "packages": ["sddm"],
         "services": ["sddm"],
     },
     "lightdm-gtk": {
@@ -178,279 +179,377 @@ DESKTOP_ENVIRONMENTS = {
         "display_manager": None,
         "services": [],
     },
-
     # ══════════════════════════════════════
     # ── Full Desktop Environments ──
     # ══════════════════════════════════════
-
     "gnome": {
         "label": "GNOME",
         "category": "de",
         "packages": [
-            "gnome", "gnome-extra",
+            "gnome",
+            "gnome-extra",
             "xdg-desktop-portal-gnome",
-            *_WAYLAND_BASE, *_COMMON_UTILS,
+            *_WAYLAND_BASE,
+            *_COMMON_UTILS,
         ],
         "display_manager": "gdm",
         "services": [],
     },
-
     "kde": {
         "label": "KDE Plasma",
         "category": "de",
         "packages": [
-            "plasma-meta", "kde-applications-meta",
+            "plasma-meta",
+            "kde-applications-meta",
             "xdg-desktop-portal-kde",
             "phonon-qt6-vlc",
-            *_XORG, *_WAYLAND_BASE, *_COMMON_UTILS,
+            *_XORG,
+            *_WAYLAND_BASE,
+            *_COMMON_UTILS,
         ],
         "display_manager": "sddm",
         "services": [],
     },
-
     "xfce": {
         "label": "XFCE",
         "category": "de",
         "packages": [
-            "xfce4", "xfce4-goodies",
-            "gvfs", "thunar-archive-plugin", "file-roller",
-            "pavucontrol", "network-manager-applet",
-            *_XORG, *_COMMON_UTILS,
+            "xfce4",
+            "xfce4-goodies",
+            "gvfs",
+            "thunar-archive-plugin",
+            "file-roller",
+            "pavucontrol",
+            "network-manager-applet",
+            *_XORG,
+            *_COMMON_UTILS,
         ],
         "display_manager": "lightdm-gtk",
         "services": [],
     },
-
     "cinnamon": {
         "label": "Cinnamon",
         "category": "de",
         "packages": [
-            "cinnamon", "nemo-fileroller", "gnome-terminal",
+            "cinnamon",
+            "nemo-fileroller",
+            "gnome-terminal",
             "gnome-keyring",
             "blueberry",
-            *_XORG, *_COMMON_UTILS,
+            *_XORG,
+            *_COMMON_UTILS,
         ],
         "display_manager": "lightdm-gtk",
         "services": [],
     },
-
     "mate": {
         "label": "MATE",
         "category": "de",
         "packages": [
-            "mate", "mate-extra",
+            "mate",
+            "mate-extra",
             "network-manager-applet",
-            *_XORG, *_COMMON_UTILS,
+            *_XORG,
+            *_COMMON_UTILS,
         ],
         "display_manager": "lightdm-gtk",
         "services": [],
     },
-
     "budgie": {
         "label": "Budgie",
         "category": "de",
         "packages": [
-            "budgie-desktop", "budgie-extras",
-            "gnome-terminal", "nemo",
+            "budgie-desktop",
+            "budgie-extras",
+            "gnome-terminal",
+            "nemo",
             "gnome-keyring",
-            *_XORG, *_COMMON_UTILS,
+            *_XORG,
+            *_COMMON_UTILS,
         ],
         "display_manager": "lightdm-gtk",
         "services": [],
     },
-
     "lxqt": {
         "label": "LXQt",
         "category": "de",
         "packages": [
-            "lxqt", "breeze-icons", "oxygen-icons",
+            "lxqt",
+            "breeze-icons",
+            "oxygen-icons",
             "xscreensaver",
             "network-manager-applet",
-            *_XORG, *_COMMON_UTILS,
+            *_XORG,
+            *_COMMON_UTILS,
         ],
         "display_manager": "sddm",
         "services": [],
     },
-
     "deepin": {
         "label": "Deepin",
         "category": "de",
         "packages": [
-            "deepin", "deepin-extra", "deepin-kwin",
-            *_XORG, *_COMMON_UTILS,
+            "deepin",
+            "deepin-extra",
+            "deepin-kwin",
+            *_XORG,
+            *_COMMON_UTILS,
         ],
         "display_manager": "lightdm-gtk",
         "services": [],
     },
-
     "enlightenment": {
         "label": "Enlightenment",
         "category": "de",
         "packages": [
-            "enlightenment", "terminology",
-            *_XORG, *_COMMON_UTILS,
+            "enlightenment",
+            "terminology",
+            *_XORG,
+            *_COMMON_UTILS,
         ],
         "display_manager": "lightdm-gtk",
         "services": [],
     },
-
     # ══════════════════════════════════════
     # ── Tiling / Stacking Window Managers ──
     # ══════════════════════════════════════
-
     "hyprland": {
         "label": "Hyprland (Wayland compositor)",
         "category": "wm",
         "packages": [
-            "hyprland", "hyprpaper", "hypridle", "hyprlock",
-            "waybar", "wofi", "dunst",
-            "foot", "thunar", "grim", "slurp", "wl-clipboard",
-            "polkit-gnome", "xdg-desktop-portal-hyprland",
-            "qt5-wayland", "qt6-wayland", "brightnessctl",
-            *_WAYLAND_BASE, *_COMMON_UTILS,
+            "hyprland",
+            "hyprpaper",
+            "hypridle",
+            "hyprlock",
+            "waybar",
+            "wofi",
+            "dunst",
+            "foot",
+            "thunar",
+            "grim",
+            "slurp",
+            "wl-clipboard",
+            "polkit-gnome",
+            "xdg-desktop-portal-hyprland",
+            "qt5-wayland",
+            "qt6-wayland",
+            "brightnessctl",
+            *_WAYLAND_BASE,
+            *_COMMON_UTILS,
         ],
         "display_manager": None,  # Started from TTY
         "services": [],
     },
-
     "sway": {
         "label": "Sway (Wayland tiling – i3 compatible)",
         "category": "wm",
         "packages": [
-            "sway", "swayidle", "swaylock", "swaybg",
-            "waybar", "wofi", "dunst",
-            "foot", "thunar", "grim", "slurp", "wl-clipboard",
-            "polkit-gnome", "xdg-desktop-portal-wlr",
+            "sway",
+            "swayidle",
+            "swaylock",
+            "swaybg",
+            "waybar",
+            "wofi",
+            "dunst",
+            "foot",
+            "thunar",
+            "grim",
+            "slurp",
+            "wl-clipboard",
+            "polkit-gnome",
+            "xdg-desktop-portal-wlr",
             "brightnessctl",
-            *_WAYLAND_BASE, *_COMMON_UTILS,
+            *_WAYLAND_BASE,
+            *_COMMON_UTILS,
         ],
         "display_manager": None,
         "services": [],
     },
-
     "i3": {
         "label": "i3-wm (X11 tiling)",
         "category": "wm",
         "packages": [
-            "i3-wm", "i3status", "i3lock", "i3blocks",
-            "dmenu", "rofi", "dunst",
-            "alacritty", "thunar", "feh", "picom",
-            "lxappearance", "arandr",
-            "network-manager-applet", "pavucontrol",
-            *_XORG, *_COMMON_UTILS,
+            "i3-wm",
+            "i3status",
+            "i3lock",
+            "i3blocks",
+            "dmenu",
+            "rofi",
+            "dunst",
+            "alacritty",
+            "thunar",
+            "feh",
+            "picom",
+            "lxappearance",
+            "arandr",
+            "network-manager-applet",
+            "pavucontrol",
+            *_XORG,
+            *_COMMON_UTILS,
         ],
         "display_manager": None,
         "services": [],
     },
-
     "bspwm": {
         "label": "bspwm (X11 tiling)",
         "category": "wm",
         "packages": [
-            "bspwm", "sxhkd",
-            "polybar", "rofi", "dunst",
-            "alacritty", "thunar", "feh", "picom",
+            "bspwm",
+            "sxhkd",
+            "polybar",
+            "rofi",
+            "dunst",
+            "alacritty",
+            "thunar",
+            "feh",
+            "picom",
             "lxappearance",
-            *_XORG, *_COMMON_UTILS,
+            *_XORG,
+            *_COMMON_UTILS,
         ],
         "display_manager": None,
         "services": [],
     },
-
     "dwm": {
         "label": "dwm (X11 dynamic – suckless)",
         "category": "wm",
         "packages": [
-            "dwm", "dmenu", "st",
-            "dunst", "feh", "picom",
-            *_XORG, *_COMMON_UTILS,
+            "dwm",
+            "dmenu",
+            "st",
+            "dunst",
+            "feh",
+            "picom",
+            *_XORG,
+            *_COMMON_UTILS,
         ],
         "display_manager": None,
         "services": [],
     },
-
     "qtile": {
         "label": "Qtile (X11/Wayland tiling – Python)",
         "category": "wm",
         "packages": [
-            "qtile", "python-psutil", "python-iwlib",
-            "rofi", "dunst",
-            "alacritty", "thunar", "feh", "picom",
-            *_XORG, *_WAYLAND_BASE, *_COMMON_UTILS,
+            "qtile",
+            "python-psutil",
+            "python-iwlib",
+            "rofi",
+            "dunst",
+            "alacritty",
+            "thunar",
+            "feh",
+            "picom",
+            *_XORG,
+            *_WAYLAND_BASE,
+            *_COMMON_UTILS,
         ],
         "display_manager": None,
         "services": [],
     },
-
     "openbox": {
         "label": "Openbox (X11 stacking)",
         "category": "wm",
         "packages": [
-            "openbox", "obconf",
-            "tint2", "rofi", "dunst",
-            "alacritty", "thunar", "feh", "picom",
+            "openbox",
+            "obconf",
+            "tint2",
+            "rofi",
+            "dunst",
+            "alacritty",
+            "thunar",
+            "feh",
+            "picom",
             "lxappearance",
-            "network-manager-applet", "volumeicon",
-            *_XORG, *_COMMON_UTILS,
+            "network-manager-applet",
+            "volumeicon",
+            *_XORG,
+            *_COMMON_UTILS,
         ],
         "display_manager": None,
         "services": [],
     },
-
     "awesome": {
         "label": "awesome (X11 dynamic tiling)",
         "category": "wm",
         "packages": [
-            "awesome", "vicious",
-            "rofi", "dunst",
-            "alacritty", "thunar", "feh", "picom",
-            "lxappearance", "network-manager-applet",
-            *_XORG, *_COMMON_UTILS,
+            "awesome",
+            "vicious",
+            "rofi",
+            "dunst",
+            "alacritty",
+            "thunar",
+            "feh",
+            "picom",
+            "lxappearance",
+            "network-manager-applet",
+            *_XORG,
+            *_COMMON_UTILS,
         ],
         "display_manager": None,
         "services": [],
     },
-
     "river": {
         "label": "River (Wayland dynamic tiling)",
         "category": "wm",
         "packages": [
             "river",
-            "waybar", "wofi", "dunst",
-            "foot", "thunar", "grim", "slurp", "wl-clipboard",
-            "polkit-gnome", "xdg-desktop-portal-wlr",
-            *_WAYLAND_BASE, *_COMMON_UTILS,
+            "waybar",
+            "wofi",
+            "dunst",
+            "foot",
+            "thunar",
+            "grim",
+            "slurp",
+            "wl-clipboard",
+            "polkit-gnome",
+            "xdg-desktop-portal-wlr",
+            *_WAYLAND_BASE,
+            *_COMMON_UTILS,
         ],
         "display_manager": None,
         "services": [],
     },
-
     "mangowm": {
         "label": "MangoWM (Wayland compositor – AUR only)",
         "category": "wm",
         "packages": [
             # MangoWM itself must be installed from AUR (mangowm-git).
             # Only companion packages from the official repos are listed here.
-            "waybar", "wofi", "dunst",
-            "foot", "thunar", "grim", "slurp", "wl-clipboard",
-            "polkit-gnome", "xdg-desktop-portal-wlr",
-            *_WAYLAND_BASE, *_COMMON_UTILS,
+            "waybar",
+            "wofi",
+            "dunst",
+            "foot",
+            "thunar",
+            "grim",
+            "slurp",
+            "wl-clipboard",
+            "polkit-gnome",
+            "xdg-desktop-portal-wlr",
+            *_WAYLAND_BASE,
+            *_COMMON_UTILS,
         ],
         "aur_packages": ["mangowm-git"],
         "display_manager": None,
         "services": [],
     },
-
     "niri": {
         "label": "Niri (Wayland scrollable tiling – AUR only)",
         "category": "wm",
         "packages": [
             # Niri itself must be installed from AUR (niri-git).
             # Only companion packages from the official repos are listed here.
-            "waybar", "fuzzel", "dunst",
-            "foot", "thunar", "grim", "slurp", "wl-clipboard",
-            "polkit-gnome", "xdg-desktop-portal-gnome",
-            *_WAYLAND_BASE, *_COMMON_UTILS,
+            "waybar",
+            "fuzzel",
+            "dunst",
+            "foot",
+            "thunar",
+            "grim",
+            "slurp",
+            "wl-clipboard",
+            "polkit-gnome",
+            "xdg-desktop-portal-gnome",
+            *_WAYLAND_BASE,
+            *_COMMON_UTILS,
         ],
         "aur_packages": ["niri-git"],
         "display_manager": None,
@@ -503,6 +602,7 @@ def configure_desktop(screen: Screen) -> str | None:
         key_map.append(key)
 
     from artixinstall.tui.menu import run_menu, MenuItem
+
     items = []
     for i, label in enumerate(display_labels):
         k = key_map[i]
@@ -511,8 +611,12 @@ def configure_desktop(screen: Screen) -> str | None:
         else:
             items.append(MenuItem(label, key=k))
 
-    result = run_menu(screen, "Select desktop environment / window manager", items,
-                      footer="↑↓ Navigate  Enter Select  ESC Back")
+    result = run_menu(
+        screen,
+        "Select desktop environment / window manager",
+        items,
+        footer="↑↓ Navigate  Enter Select  ESC Back",
+    )
     if result is None:
         return None
     return result.key
@@ -536,7 +640,8 @@ def configure_display_manager(screen: Screen, desktop: str) -> str | None:
     options = [
         (
             f"{DISPLAY_MANAGERS[key]['label']} (recommended)"
-            if key == default_dm else DISPLAY_MANAGERS[key]["label"]
+            if key == default_dm
+            else DISPLAY_MANAGERS[key]["label"]
         )
         for key in recommended
         if key in DISPLAY_MANAGERS
